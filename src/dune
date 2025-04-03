@@ -4,27 +4,40 @@
  (name vyconf_connect)
  (public_name vyconf.vyconf-connect)
  (modules vyconf_pbt message)
- (libraries lwt lwt.unix lwt_log lwt_ppx ocaml-protoc fileutils ppx_deriving_yojson)
- (preprocess (pps lwt_ppx ppx_deriving_yojson)))
+ (libraries lwt lwt.unix lwt_log lwt_ppx ocaml-protoc ocplib-endian)
+ (preprocess (pps lwt_ppx)))
+
+(library
+ (name vycall_message)
+ (public_name vyconf.vycall-message)
+ (modules vycall_pbt)
+ (libraries ocaml-protoc))
+
+(library
+ (name commitd_client)
+ (public_name vyconf.vycall-client)
+ (modules vycall_client commit)
+ (libraries vyos1x-config vycall_message lwt lwt.unix lwt_log lwt_ppx ocplib-endian)
+ (preprocess (pps lwt_ppx)))
 
 (library
  (name vyconfd_config)
- (modules vyconf_config session directories defaults)
- (libraries vyos1x-config vyconf_connect toml sha ppx_deriving.show)
- (preprocess (pps ppx_deriving.show ppx_deriving_yojson)))
+ (public_name vyconf.vyconfd-config)
+ (modules vyconf_config startup session directories defaults)
+ (libraries vyos1x-config vyconf_connect commitd_client toml sha ppx_deriving.show yojson ppx_deriving_yojson)
+ (preprocess (pps lwt_ppx ppx_deriving.show ppx_deriving_yojson)))
 
 (library
- (name client)
+ (name vyconfd_client)
  (public_name vyconf.vyconf-client)
  (modules vyconf_client vyconf_client_session)
- (libraries vyos1x-config vyconf_connect lwt lwt.unix lwt_log lwt_ppx ocaml-protoc toml sha
-            yojson ppx_deriving.show ppx_deriving_yojson)
- (preprocess (pps lwt_ppx ppx_deriving.show ppx_deriving_yojson)))
+ (libraries vyos1x-config vyconf_connect lwt lwt.unix lwt_log lwt_ppx)
+ (preprocess (pps lwt_ppx)))
 
 (executable
  (name vyconfd)
  (public_name vyconfd)
- (modules vyconfd startup version)
+ (modules vyconfd version)
  (libraries vyos1x-config vyconfd_config vyconf_connect)
  (preprocess (pps lwt_ppx)))
 
@@ -32,17 +45,16 @@
  (name vycli)
  (public_name vycli)
  (modules vycli)
- (libraries client)
+ (libraries vyconfd_client)
  (preprocess (pps lwt_ppx)))
 
 (executable
  (name validate)
  (public_name validate)
  (modules validate)
- (libraries client))
+ (libraries vyconfd_client))
 
 (rule
- (alias protoc)
  (mode promote)
  (targets vyconf_pbt.ml vyconf_pbt.mli)
  (action
@@ -52,6 +64,17 @@
     (run ocaml-protoc --ml_out src data/vyconf.proto)
     (run mv src/vyconf.ml src/vyconf_pbt.ml)
     (run mv src/vyconf.mli src/vyconf_pbt.mli)))))
+
+(rule
+ (mode promote)
+ (targets vycall_pbt.ml vycall_pbt.mli)
+ (action
+  (chdir
+   %{project_root}
+   (progn
+    (run ocaml-protoc --ml_out src data/vycall.proto)
+    (run mv src/vycall.ml src/vycall_pbt.ml)
+    (run mv src/vycall.mli src/vycall_pbt.mli)))))
 
 (library
  (name vyos1x_adapter)

@@ -33,7 +33,7 @@ let setup_logger daemonize log_file template =
 
 (** Load the config file or panic if it fails *)
 let load_daemon_config path =
-    let result = Vyconfd_config.Vyconf_config.load path in
+    let result = Vyconf_config.load path in
     match result with
     | Ok cfg -> cfg
     | Error err ->
@@ -41,13 +41,13 @@ let load_daemon_config path =
 
 (** Check if appliance directories exist and panic if they don't *)
 let check_dirs dirs =
-    let res = Vyconfd_config.Directories.test dirs in
+    let res = Directories.test dirs in
     match res with
     | Ok _ -> ()
     | Error err -> panic err
 
 let check_validators_dir dirs =
-    let res = Vyconfd_config.Directories.test_validators_dir dirs in
+    let res = Directories.test_validators_dir dirs in
     match res with
     | Ok _ -> ()
     | Error err -> panic err
@@ -78,12 +78,20 @@ let create_server accept_connection sock =
         Lwt_unix.accept sock >>= accept_connection >>= serve
     in serve
 
+(* strip commponent version string *)
+let strip_version s =
+    let rex = Pcre.regexp ~flags:[`MULTILINE;`DOTALL] "(^//.*)" in
+    let res = Pcre.split ~max:0 ~rex s in
+    match res with
+    | h :: _ -> h
+    | [] -> panic "Failure applying regex to config string"
+
 (** Load the appliance configuration file *)
 let load_config file =
     try
         let chan = open_in file in
         let s = really_input_string chan (in_channel_length chan) in
-        let config = Vyos1x.Parser.from_string s in
+        let config = strip_version s |> Vyos1x.Parser.from_string in
         Ok config
     with
         | Sys_error msg -> Error msg
@@ -136,5 +144,6 @@ module I = Vyos1x.Internal.Make(Vyos1x.Reference_tree)
 let read_reference_tree file =
     try
         let reftree = I.read_internal file in
+        log_info @@ Printf.sprintf "Reading interface definitions from %s" file;
         Ok reftree
     with Sys_error msg -> Error msg
