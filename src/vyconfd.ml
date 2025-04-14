@@ -192,15 +192,10 @@ let save world token (req: request_save) =
 
 let commit world token (req: request_commit) =
     let s = find_session token in
-    let at = world.Session.running_config in
-    let wt = s.proposed_config in
-    let rt = world.reference_tree in
-    let vc = world.vyconf_config in
-    let () = IC.write_internal at (FP.concat vc.session_dir vc.running_cache) in
-    let () = IC.write_internal wt (FP.concat vc.session_dir vc.session_cache) in
-
     let req_dry_run = Option.value req.dry_run ~default:false in
-    let commit_data = CC.make_commit_data ~dry_run:req_dry_run rt at wt token in
+
+    let commit_data = Session.prepare_commit ~dry_run:req_dry_run world s token
+    in
     let%lwt received_commit_data = VC.do_commit commit_data in
     let%lwt result_commit_data =
         Lwt.return (CC.commit_update received_commit_data)

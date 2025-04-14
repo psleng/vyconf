@@ -1,8 +1,11 @@
 module CT = Vyos1x.Config_tree
+module IC = Vyos1x.Internal.Make(CT)
+module CC = Commitd_client.Commit
 module CD = Vyos1x.Config_diff
 module VT = Vyos1x.Vytree
 module RT = Vyos1x.Reference_tree
 module D = Directories
+module FP = FilePath
 
 exception Session_error of string
 
@@ -135,6 +138,25 @@ let save w s file =
     match res with
     | Error e -> raise (Session_error (Printf.sprintf "Error saving config: %s" e))
     | Ok () -> s
+
+let prepare_commit ?(dry_run=false) w s id =
+    let at = w.running_config in
+    let wt = s.proposed_config in
+    let rt = w.reference_tree in
+    let vc = w.vyconf_config in
+    let () =
+        try
+            IC.write_internal at (FP.concat vc.session_dir vc.running_cache)
+        with
+            Vyos1x.Internal.Write_error msg -> raise (Session_error msg)
+    in
+    let () =
+        try
+            IC.write_internal wt (FP.concat vc.session_dir vc.session_cache)
+        with
+            Vyos1x.Internal.Write_error msg -> raise (Session_error msg)
+    in
+    CC.make_commit_data ~dry_run:dry_run rt at wt id
 
 let get_value w s path =
     if not (VT.exists s.proposed_config path) then
