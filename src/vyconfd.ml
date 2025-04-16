@@ -263,8 +263,8 @@ let rec handle_connection world ic oc () =
                     | _, Reload_reftree r -> reload_reftree world r
                     | None, _ -> {response_tmpl with status=Fail; output=(Some "Operation requires session token")}
                     | Some t, Teardown _ -> teardown t
-                    | Some t, Configure r -> enter_conf_mode r t
-                    | Some t, Exit_configure -> exit_conf_mode world t
+                    | Some t, Enter_configuration_mode r -> enter_conf_mode r t
+                    | Some t, Exit_configuration_mode -> exit_conf_mode world t
                     | Some t, Exists r -> exists world t r
                     | Some t, Get_value r -> get_value world t r
                     | Some t, Get_values r -> get_values world t r

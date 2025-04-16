@@ -151,8 +151,8 @@ message Request {
     ListChildren list_children = 16;
     RunOpMode run_op_mode = 17;
     Confirm confirm = 18;
-    EnterConfigurationMode configure = 19;
-    ExitConfigurationMode exit_configure = 20;
+    EnterConfigurationMode enter_configuration_mode = 19;
+    ExitConfigurationMode exit_configuration_mode = 20;
     Validate validate = 21;
     Teardown teardown = 22;
     ReloadReftree reload_reftree = 23;

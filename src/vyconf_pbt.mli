@@ -151,8 +151,8 @@ type request =
   | List_children of request_list_children
   | Run_op_mode of request_run_op_mode
   | Confirm
-  | Configure of request_enter_configuration_mode
-  | Exit_configure
+  | Enter_configuration_mode of request_enter_configuration_mode
+  | Exit_configuration_mode
   | Validate of request_validate
   | Teardown of request_teardown
   | Reload_reftree of request_reload_reftree

@@ -144,8 +144,8 @@ type request =
   | List_children of request_list_children
   | Run_op_mode of request_run_op_mode
   | Confirm
-  | Configure of request_enter_configuration_mode
-  | Exit_configure
+  | Enter_configuration_mode of request_enter_configuration_mode
+  | Exit_configuration_mode
   | Validate of request_validate
   | Teardown of request_teardown
   | Reload_reftree of request_reload_reftree
@@ -841,8 +841,8 @@ let rec pp_request fmt (v:request) =
   | List_children x -> Format.fprintf fmt "@[<hv2>List_children(@,%a)@]" pp_request_list_children x
   | Run_op_mode x -> Format.fprintf fmt "@[<hv2>Run_op_mode(@,%a)@]" pp_request_run_op_mode x
   | Confirm  -> Format.fprintf fmt "Confirm"
-  | Configure x -> Format.fprintf fmt "@[<hv2>Configure(@,%a)@]" pp_request_enter_configuration_mode x
-  | Exit_configure  -> Format.fprintf fmt "Exit_configure"
+  | Enter_configuration_mode x -> Format.fprintf fmt "@[<hv2>Enter_configuration_mode(@,%a)@]" pp_request_enter_configuration_mode x
+  | Exit_configuration_mode  -> Format.fprintf fmt "Exit_configuration_mode"
   | Validate x -> Format.fprintf fmt "@[<hv2>Validate(@,%a)@]" pp_request_validate x
   | Teardown x -> Format.fprintf fmt "@[<hv2>Teardown(@,%a)@]" pp_request_teardown x
   | Reload_reftree x -> Format.fprintf fmt "@[<hv2>Reload_reftree(@,%a)@]" pp_request_reload_reftree x
@@ -1210,10 +1210,10 @@ let rec encode_pb_request (v:request) encoder =
   | Confirm ->
     Pbrt.Encoder.key 18 Pbrt.Bytes encoder; 
     Pbrt.Encoder.empty_nested encoder
-  | Configure x ->
+  | Enter_configuration_mode x ->
     Pbrt.Encoder.nested encode_pb_request_enter_configuration_mode x encoder;
     Pbrt.Encoder.key 19 Pbrt.Bytes encoder; 
-  | Exit_configure ->
+  | Exit_configuration_mode ->
     Pbrt.Encoder.key 20 Pbrt.Bytes encoder; 
     Pbrt.Encoder.empty_nested encoder
   | Validate x ->
@@ -1906,10 +1906,10 @@ let rec decode_pb_request d =
         Pbrt.Decoder.empty_nested d ;
         (Confirm : request)
       end
-      | Some (19, _) -> (Configure (decode_pb_request_enter_configuration_mode (Pbrt.Decoder.nested d)) : request) 
+      | Some (19, _) -> (Enter_configuration_mode (decode_pb_request_enter_configuration_mode (Pbrt.Decoder.nested d)) : request) 
       | Some (20, _) -> begin 
         Pbrt.Decoder.empty_nested d ;
-        (Exit_configure : request)
+        (Exit_configuration_mode : request)
       end
       | Some (21, _) -> (Validate (decode_pb_request_validate (Pbrt.Decoder.nested d)) : request) 
       | Some (22, _) -> (Teardown (decode_pb_request_teardown (Pbrt.Decoder.nested d)) : request) 
