@@ -18,6 +18,7 @@ type request_output_format =
 type request_prompt = unit
 
 type request_setup_session = {
+  client_pid : int32;
   client_application : string option;
   on_behalf_of : int32 option;
 }
@@ -196,6 +197,7 @@ val default_request_prompt : unit
 (** [default_request_prompt ()] is the default value for type [request_prompt] *)
 
 val default_request_setup_session : 
+  ?client_pid:int32 ->
   ?client_application:string option ->
   ?on_behalf_of:int32 option ->
   unit ->

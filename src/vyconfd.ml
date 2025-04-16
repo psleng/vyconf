@@ -51,8 +51,9 @@ let make_session_token () =
 let setup_session world req =
     let token = make_session_token () in
     let user = "unknown user" in
+    let pid = req.client_pid in
     let client_app = Option.value req.client_application ~default:"unknown client" in
-    let () = Hashtbl.add sessions token (Session.make world client_app user) in
+    let () = Hashtbl.add sessions token (Session.make world client_app user pid) in
     {response_tmpl with output=(Some token)}
 
 let find_session token = Hashtbl.find sessions token

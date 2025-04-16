@@ -27,15 +27,17 @@ type session_data = {
     changeset: cfg_op list;
     client_app: string;
     user: string;
+    client_pid: int32;
 }
 
-let make world client_app user = {
+let make world client_app user pid = {
     proposed_config = world.running_config;
     modified = false;
     conf_mode = false;
     changeset = [];
     client_app = client_app;
-    user = user
+    user = user;
+    client_pid = pid;
 }
 
 let string_of_op op =

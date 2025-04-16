@@ -11,6 +11,7 @@ type request_output_format =
 type request_prompt = unit
 
 type request_setup_session = {
+  client_pid : int32;
   client_application : string option;
   on_behalf_of : int32 option;
 }
@@ -183,9 +184,11 @@ let rec default_request_output_format () = (Out_plain:request_output_format)
 let rec default_request_prompt = ()
 
 let rec default_request_setup_session 
+  ?client_pid:((client_pid:int32) = 0l)
   ?client_application:((client_application:string option) = None)
   ?on_behalf_of:((on_behalf_of:int32 option) = None)
   () : request_setup_session  = {
+  client_pid;
   client_application;
   on_behalf_of;
 }
@@ -387,11 +390,13 @@ let rec default_response
 }
 
 type request_setup_session_mutable = {
+  mutable client_pid : int32;
   mutable client_application : string option;
   mutable on_behalf_of : int32 option;
 }
 
 let default_request_setup_session_mutable () : request_setup_session_mutable = {
+  client_pid = 0l;
   client_application = None;
   on_behalf_of = None;
 }
@@ -654,7 +659,8 @@ let rec pp_request_prompt fmt (v:request_prompt) =
 
 let rec pp_request_setup_session fmt (v:request_setup_session) = 
   let pp_i fmt () =
-    Pbrt.Pp.pp_record_field ~first:true "client_application" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.client_application;
+    Pbrt.Pp.pp_record_field ~first:true "client_pid" Pbrt.Pp.pp_int32 fmt v.client_pid;
+    Pbrt.Pp.pp_record_field ~first:false "client_application" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.client_application;
     Pbrt.Pp.pp_record_field ~first:false "on_behalf_of" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.on_behalf_of;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
@@ -896,16 +902,18 @@ let rec encode_pb_request_prompt (v:request_prompt) encoder =
 ()
 
 let rec encode_pb_request_setup_session (v:request_setup_session) encoder = 
+  Pbrt.Encoder.int32_as_varint v.client_pid encoder;
+  Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
   begin match v.client_application with
   | Some x -> 
     Pbrt.Encoder.string x encoder;
-    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+    Pbrt.Encoder.key 2 Pbrt.Bytes encoder; 
   | None -> ();
   end;
   begin match v.on_behalf_of with
   | Some x -> 
     Pbrt.Encoder.int32_as_varint x encoder;
-    Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
+    Pbrt.Encoder.key 3 Pbrt.Varint encoder; 
   | None -> ();
   end;
   ()
@@ -1307,23 +1315,31 @@ let rec decode_pb_request_prompt d =
 let rec decode_pb_request_setup_session d =
   let v = default_request_setup_session_mutable () in
   let continue__= ref true in
+  let client_pid_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
     ); continue__ := false
-    | Some (1, Pbrt.Bytes) -> begin
-      v.client_application <- Some (Pbrt.Decoder.string d);
+    | Some (1, Pbrt.Varint) -> begin
+      v.client_pid <- Pbrt.Decoder.int32_as_varint d; client_pid_is_set := true;
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(1)" pk
-    | Some (2, Pbrt.Varint) -> begin
-      v.on_behalf_of <- Some (Pbrt.Decoder.int32_as_varint d);
+    | Some (2, Pbrt.Bytes) -> begin
+      v.client_application <- Some (Pbrt.Decoder.string d);
     end
     | Some (2, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(2)" pk
+    | Some (3, Pbrt.Varint) -> begin
+      v.on_behalf_of <- Some (Pbrt.Decoder.int32_as_varint d);
+    end
+    | Some (3, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(3)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
+  begin if not !client_pid_is_set then Pbrt.Decoder.missing_field "client_pid" end;
   ({
+    client_pid = v.client_pid;
     client_application = v.client_application;
     on_behalf_of = v.on_behalf_of;
   } : request_setup_session)
