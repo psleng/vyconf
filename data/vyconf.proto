@@ -18,6 +18,14 @@ message Request {
     optional int32 OnBehalfOf = 3;
   }
 
+  message SessionOfPid {
+    required int32 ClientPid = 1;
+  }
+
+  message SessionUpdatePid {
+    required int32 ClientPid = 1;
+  }
+
   message Teardown {
     optional int32 OnBehalfOf = 1;
   }
@@ -160,6 +168,8 @@ message Request {
     Load load = 24;
     Discard discard = 25;
     SessionChanged session_changed = 26;
+    SessionOfPid session_of_pid = 27;
+    SessionUpdatePid session_update_pid = 28;
   }
 }
 

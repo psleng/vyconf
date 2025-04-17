@@ -45,18 +45,46 @@ let usage = "Usage: " ^ Sys.argv.(0) ^ " [options]"
 
 let response_tmpl = {status=Success; output=None; error=None; warning=None}
 
+let find_session token = Hashtbl.find sessions token
+
+let find_session_by_pid pid =
+    let exception E of string in
+    let find_k k v acc =
+        if v.Session.client_pid = pid then
+            raise_notrace (E k)
+        else acc
+    in
+    try
+        Hashtbl.fold find_k sessions None
+    with E x -> Some x
+
 let make_session_token () =
     Sha1.string (string_of_int (Random.bits ())) |> Sha1.to_hex
 
-let setup_session world req =
+let setup_session world (req: request_setup_session) =
     let token = make_session_token () in
-    let user = "unknown user" in
     let pid = req.client_pid in
+    let user = "unknown user" in
     let client_app = Option.value req.client_application ~default:"unknown client" in
     let () = Hashtbl.add sessions token (Session.make world client_app user pid) in
     {response_tmpl with output=(Some token)}
 
-let find_session token = Hashtbl.find sessions token
+let session_of_pid _world (req: request_session_of_pid) =
+    let pid = req.client_pid in
+    let extant = find_session_by_pid pid in
+    {response_tmpl with output=extant}
+
+let session_update_pid _world token (req: request_session_update_pid) =
+    let pid = req.client_pid in
+    try
+        begin
+        let s = Hashtbl.find sessions token in
+        if s.client_pid <> pid then
+            let session = {s with client_pid=pid} in
+            Hashtbl.replace sessions token session
+        end;
+        {response_tmpl with output=(Some token)}
+    with Not_found -> {response_tmpl with status=Fail; output=None}
 
 let enter_conf_mode req token =
     let open Session in
@@ -261,8 +289,10 @@ let rec handle_connection world ic oc () =
                     (match req with
                     | _, Prompt -> response_tmpl
                     | _, Setup_session r -> setup_session world r
+                    | _, Session_of_pid r -> session_of_pid world r
                     | _, Reload_reftree r -> reload_reftree world r
                     | None, _ -> {response_tmpl with status=Fail; output=(Some "Operation requires session token")}
+                    | Some t, Session_update_pid r -> session_update_pid world t r
                     | Some t, Teardown _ -> teardown t
                     | Some t, Enter_configuration_mode r -> enter_conf_mode r t
                     | Some t, Exit_configuration_mode -> exit_conf_mode world t
