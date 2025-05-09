@@ -179,6 +179,7 @@ type errnum =
   | Internal_error 
   | Permission_denied 
   | Path_already_exists 
+  | Uncommited_changes 
 
 type response = {
   status : errnum;
@@ -926,6 +927,7 @@ let rec pp_errnum fmt (v:errnum) =
   | Internal_error -> Format.fprintf fmt "Internal_error"
   | Permission_denied -> Format.fprintf fmt "Permission_denied"
   | Path_already_exists -> Format.fprintf fmt "Path_already_exists"
+  | Uncommited_changes -> Format.fprintf fmt "Uncommited_changes"
 
 let rec pp_response fmt (v:response) = 
   let pp_i fmt () =
@@ -1334,6 +1336,7 @@ let rec encode_pb_errnum (v:errnum) encoder =
   | Internal_error -> Pbrt.Encoder.int_as_varint 6 encoder
   | Permission_denied -> Pbrt.Encoder.int_as_varint 7 encoder
   | Path_already_exists -> Pbrt.Encoder.int_as_varint 8 encoder
+  | Uncommited_changes -> Pbrt.Encoder.int_as_varint 9 encoder
 
 let rec encode_pb_response (v:response) encoder = 
   encode_pb_errnum v.status encoder;
@@ -2089,6 +2092,7 @@ let rec decode_pb_errnum d =
   | 6 -> (Internal_error:errnum)
   | 7 -> (Permission_denied:errnum)
   | 8 -> (Path_already_exists:errnum)
+  | 9 -> (Uncommited_changes:errnum)
   | _ -> Pbrt.Decoder.malformed_variant "errnum"
 
 let rec decode_pb_response d =

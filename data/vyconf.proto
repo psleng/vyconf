@@ -188,6 +188,7 @@ enum Errnum {
   INTERNAL_ERROR = 6;
   PERMISSION_DENIED = 7;
   PATH_ALREADY_EXISTS = 8;
+  UNCOMMITED_CHANGES = 9;
 }
 
 message Response {

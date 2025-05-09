@@ -186,6 +186,7 @@ type errnum =
   | Internal_error 
   | Permission_denied 
   | Path_already_exists 
+  | Uncommited_changes 
 
 type response = {
   status : errnum;
