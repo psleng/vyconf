@@ -24,6 +24,7 @@ let daemonize = ref true
 let config_file = ref defaults.config_file
 let basepath = ref "/"
 let log_file = ref None
+let legacy_config_path = ref false
 
 (* Global data *)
 let sessions : (string, Session.session_data) Hashtbl.t = Hashtbl.create 10
@@ -39,7 +40,9 @@ let args = [
     (Printf.sprintf "<string>  Configuration file, default is %s" defaults.config_file));
     ("--log-file", Arg.String (fun s -> log_file := Some s), "<string>  Log file");
     ("--base-path", Arg.String (fun s -> basepath := s), "<string>  Appliance base path");
-    ("--version", Arg.Unit (fun () -> print_endline @@ Version.version_info (); exit 0), "Print version and exit")
+    ("--version", Arg.Unit (fun () -> print_endline @@ Version.version_info (); exit 0), "Print version and exit");
+    ("--legacy-config-path", Arg.Unit (fun () -> legacy_config_path := true),
+    (Printf.sprintf "Load config file from legacy path %s" defaults.legacy_config_path));
    ]
 let usage = "Usage: " ^ Sys.argv.(0) ^ " [options]"
 
@@ -363,8 +366,14 @@ let () =
   let dirs = Directories.make !basepath vc in
   Startup.check_validators_dir dirs;
   let world = make_world vc dirs in
-  let config = Startup.load_config_failsafe
-      (FP.concat vc.config_dir vc.primary_config)
-      (FP.concat vc.config_dir vc.fallback_config) in
+  let primary_config =
+      match !legacy_config_path with
+      | true -> defaults.legacy_config_path
+      | false -> (FP.concat vc.config_dir vc.primary_config)
+  in
+  let failsafe_config = (FP.concat vc.config_dir vc.fallback_config) in
+  let config =
+      Startup.load_config_failsafe primary_config failsafe_config
+  in
   let world = Session.{world with running_config=config} in
   Lwt_main.run @@ main_loop !basepath world ()
