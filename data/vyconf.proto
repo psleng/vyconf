@@ -26,6 +26,10 @@ message Request {
     required int32 ClientPid = 1;
   }
 
+  message GetConfig {
+    optional int32 dummy = 1;
+  }
+
   message Teardown {
     optional int32 OnBehalfOf = 1;
   }
@@ -170,6 +174,7 @@ message Request {
     SessionChanged session_changed = 26;
     SessionOfPid session_of_pid = 27;
     SessionUpdatePid session_update_pid = 28;
+    GetConfig get_config = 29;
   }
 }
 

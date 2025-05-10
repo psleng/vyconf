@@ -53,4 +53,8 @@ val string_of_op : cfg_op -> string
 
 val prepare_commit : ?dry_run:bool -> world -> session_data -> string -> Commitd_client.Commit.commit_data
 
+val get_config : world -> session_data -> string -> string
+
+val cleanup_config : world -> string -> unit
+
 val show_config : world -> session_data -> string list -> Vyconf_connect.Vyconf_pbt.request_config_format -> string
