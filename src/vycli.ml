@@ -67,7 +67,8 @@ let main socket op path out_format config_format =
                     | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
                 end
             | OpSetupSession ->
-                let%lwt resp = setup_session client "vycli" in
+                let pid = Int32.of_int (Unix.getppid ()) in
+                let%lwt resp = setup_session client "vycli" pid in
                 begin
                     match resp with
                     | Ok c -> get_token c
