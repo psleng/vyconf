@@ -33,7 +33,8 @@ let call_op ?(out_format="plain") ?(config_format="curly") socket token op path 
             begin
             match o with
             | OpSetupSession ->
-                let%lwt resp = Vyconf_client.setup_session client "vyconf_client_session" in
+                let pid = Int32.of_int (Unix.getppid ()) in
+                let%lwt resp = Vyconf_client.setup_session client "vyconf_client_session" pid in
                 begin
                     match resp with
                     | Ok c -> Vyconf_client.get_token c

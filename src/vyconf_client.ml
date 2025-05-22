@@ -53,10 +53,10 @@ let prompt client =
     let%lwt resp = do_request client req in
     Lwt.return resp
 
-let setup_session ?(on_behalf_of=None) client client_app =
+let setup_session ?(on_behalf_of=None) client client_app pid =
     if Option.is_some client.session then Lwt.return (Error "Client is already associated with a session") else
     let id = on_behalf_of |> (function None -> None | Some x -> (Some (Int32.of_int x))) in
-    let req = Setup_session {client_application=(Some client_app); on_behalf_of=id} in
+    let req = Setup_session {client_application=(Some client_app); on_behalf_of=id; client_pid=pid} in
     let%lwt resp = do_request client req in
     match resp.status with
     | Success ->

@@ -18,8 +18,21 @@ type request_output_format =
 type request_prompt = unit
 
 type request_setup_session = {
+  client_pid : int32;
   client_application : string option;
   on_behalf_of : int32 option;
+}
+
+type request_session_of_pid = {
+  client_pid : int32;
+}
+
+type request_session_update_pid = {
+  client_pid : int32;
+}
+
+type request_get_config = {
+  dummy : int32 option;
 }
 
 type request_teardown = {
@@ -151,14 +164,17 @@ type request =
   | List_children of request_list_children
   | Run_op_mode of request_run_op_mode
   | Confirm
-  | Configure of request_enter_configuration_mode
-  | Exit_configure
+  | Enter_configuration_mode of request_enter_configuration_mode
+  | Exit_configuration_mode
   | Validate of request_validate
   | Teardown of request_teardown
   | Reload_reftree of request_reload_reftree
   | Load of request_load
   | Discard of request_discard
   | Session_changed of request_session_changed
+  | Session_of_pid of request_session_of_pid
+  | Session_update_pid of request_session_update_pid
+  | Get_config of request_get_config
 
 type request_envelope = {
   token : string option;
@@ -175,6 +191,7 @@ type errnum =
   | Internal_error 
   | Permission_denied 
   | Path_already_exists 
+  | Uncommited_changes 
 
 type response = {
   status : errnum;
@@ -196,11 +213,30 @@ val default_request_prompt : unit
 (** [default_request_prompt ()] is the default value for type [request_prompt] *)
 
 val default_request_setup_session : 
+  ?client_pid:int32 ->
   ?client_application:string option ->
   ?on_behalf_of:int32 option ->
   unit ->
   request_setup_session
 (** [default_request_setup_session ()] is the default value for type [request_setup_session] *)
+
+val default_request_session_of_pid : 
+  ?client_pid:int32 ->
+  unit ->
+  request_session_of_pid
+(** [default_request_session_of_pid ()] is the default value for type [request_session_of_pid] *)
+
+val default_request_session_update_pid : 
+  ?client_pid:int32 ->
+  unit ->
+  request_session_update_pid
+(** [default_request_session_update_pid ()] is the default value for type [request_session_update_pid] *)
+
+val default_request_get_config : 
+  ?dummy:int32 option ->
+  unit ->
+  request_get_config
+(** [default_request_get_config ()] is the default value for type [request_get_config] *)
 
 val default_request_teardown : 
   ?on_behalf_of:int32 option ->
@@ -395,6 +431,15 @@ val pp_request_prompt : Format.formatter -> request_prompt -> unit
 val pp_request_setup_session : Format.formatter -> request_setup_session -> unit 
 (** [pp_request_setup_session v] formats v *)
 
+val pp_request_session_of_pid : Format.formatter -> request_session_of_pid -> unit 
+(** [pp_request_session_of_pid v] formats v *)
+
+val pp_request_session_update_pid : Format.formatter -> request_session_update_pid -> unit 
+(** [pp_request_session_update_pid v] formats v *)
+
+val pp_request_get_config : Format.formatter -> request_get_config -> unit 
+(** [pp_request_get_config v] formats v *)
+
 val pp_request_teardown : Format.formatter -> request_teardown -> unit 
 (** [pp_request_teardown v] formats v *)
 
@@ -494,6 +539,15 @@ val encode_pb_request_prompt : request_prompt -> Pbrt.Encoder.t -> unit
 val encode_pb_request_setup_session : request_setup_session -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_setup_session v encoder] encodes [v] with the given [encoder] *)
 
+val encode_pb_request_session_of_pid : request_session_of_pid -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_session_of_pid v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_session_update_pid : request_session_update_pid -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_session_update_pid v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_get_config : request_get_config -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_get_config v encoder] encodes [v] with the given [encoder] *)
+
 val encode_pb_request_teardown : request_teardown -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_teardown v encoder] encodes [v] with the given [encoder] *)
 
@@ -592,6 +646,15 @@ val decode_pb_request_prompt : Pbrt.Decoder.t -> request_prompt
 
 val decode_pb_request_setup_session : Pbrt.Decoder.t -> request_setup_session
 (** [decode_pb_request_setup_session decoder] decodes a [request_setup_session] binary value from [decoder] *)
+
+val decode_pb_request_session_of_pid : Pbrt.Decoder.t -> request_session_of_pid
+(** [decode_pb_request_session_of_pid decoder] decodes a [request_session_of_pid] binary value from [decoder] *)
+
+val decode_pb_request_session_update_pid : Pbrt.Decoder.t -> request_session_update_pid
+(** [decode_pb_request_session_update_pid decoder] decodes a [request_session_update_pid] binary value from [decoder] *)
+
+val decode_pb_request_get_config : Pbrt.Decoder.t -> request_get_config
+(** [decode_pb_request_get_config decoder] decodes a [request_get_config] binary value from [decoder] *)
 
 val decode_pb_request_teardown : Pbrt.Decoder.t -> request_teardown
 (** [decode_pb_request_teardown decoder] decodes a [request_teardown] binary value from [decoder] *)

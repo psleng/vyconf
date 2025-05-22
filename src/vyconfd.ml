@@ -24,6 +24,7 @@ let daemonize = ref true
 let config_file = ref defaults.config_file
 let basepath = ref "/"
 let log_file = ref None
+let legacy_config_path = ref false
 
 (* Global data *)
 let sessions : (string, Session.session_data) Hashtbl.t = Hashtbl.create 10
@@ -39,23 +40,54 @@ let args = [
     (Printf.sprintf "<string>  Configuration file, default is %s" defaults.config_file));
     ("--log-file", Arg.String (fun s -> log_file := Some s), "<string>  Log file");
     ("--base-path", Arg.String (fun s -> basepath := s), "<string>  Appliance base path");
-    ("--version", Arg.Unit (fun () -> print_endline @@ Version.version_info (); exit 0), "Print version and exit")
+    ("--version", Arg.Unit (fun () -> print_endline @@ Version.version_info (); exit 0), "Print version and exit");
+    ("--legacy-config-path", Arg.Unit (fun () -> legacy_config_path := true),
+    (Printf.sprintf "Load config file from legacy path %s" defaults.legacy_config_path));
    ]
 let usage = "Usage: " ^ Sys.argv.(0) ^ " [options]"
 
 let response_tmpl = {status=Success; output=None; error=None; warning=None}
 
+let find_session token = Hashtbl.find sessions token
+
+let find_session_by_pid pid =
+    let exception E of string in
+    let find_k k v acc =
+        if v.Session.client_pid = pid then
+            raise_notrace (E k)
+        else acc
+    in
+    try
+        Hashtbl.fold find_k sessions None
+    with E x -> Some x
+
 let make_session_token () =
     Sha1.string (string_of_int (Random.bits ())) |> Sha1.to_hex
 
-let setup_session world req =
+let setup_session world (req: request_setup_session) =
     let token = make_session_token () in
+    let pid = req.client_pid in
     let user = "unknown user" in
     let client_app = Option.value req.client_application ~default:"unknown client" in
-    let () = Hashtbl.add sessions token (Session.make world client_app user) in
+    let () = Hashtbl.add sessions token (Session.make world client_app user pid) in
     {response_tmpl with output=(Some token)}
 
-let find_session token = Hashtbl.find sessions token
+let session_of_pid _world (req: request_session_of_pid) =
+    let pid = req.client_pid in
+    let extant = find_session_by_pid pid in
+    {response_tmpl with output=extant}
+
+let session_update_pid _world token (req: request_session_update_pid) =
+    let pid = req.client_pid in
+    try
+        begin
+        let s = Hashtbl.find sessions token in
+        if s.client_pid <> pid then
+            let session = {s with client_pid=pid} in
+            Hashtbl.replace sessions token session
+        end;
+        {response_tmpl with output=(Some token)}
+    with Not_found -> {response_tmpl with status=Fail; output=None}
 
 let enter_conf_mode req token =
     let open Session in
@@ -88,9 +120,10 @@ let exit_conf_mode world token =
     in Hashtbl.replace sessions token session;
     response_tmpl
 
-let teardown token =
+let teardown world token =
     try
-        Hashtbl.remove sessions token;
+        let () = Hashtbl.remove sessions token in
+        let () = Session.cleanup_config world token in
         {response_tmpl with status=Success}
     with Not_found ->
         {response_tmpl with status=Fail; error=(Some "Session not found")}
@@ -98,6 +131,13 @@ let teardown token =
 let session_changed world token (_req: request_session_changed) =
     if Session.session_changed world (find_session token) then response_tmpl
     else {response_tmpl with status=Fail}
+
+let get_config world token (_req: request_get_config) =
+    try
+        let id =
+            Session.get_config world (find_session token) token
+        in {response_tmpl with output=(Some id)}
+    with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
 
 let exists world token (req: request_exists) =
     if Session.exists world (find_session token) req.path then response_tmpl
@@ -192,15 +232,10 @@ let save world token (req: request_save) =
 
 let commit world token (req: request_commit) =
     let s = find_session token in
-    let at = world.Session.running_config in
-    let wt = s.proposed_config in
-    let rt = world.reference_tree in
-    let vc = world.vyconf_config in
-    let () = IC.write_internal at (FP.concat vc.session_dir vc.running_cache) in
-    let () = IC.write_internal wt (FP.concat vc.session_dir vc.session_cache) in
-
     let req_dry_run = Option.value req.dry_run ~default:false in
-    let commit_data = CC.make_commit_data ~dry_run:req_dry_run rt at wt token in
+
+    let commit_data = Session.prepare_commit ~dry_run:req_dry_run world s token
+    in
     let%lwt received_commit_data = VC.do_commit commit_data in
     let%lwt result_commit_data =
         Lwt.return (CC.commit_update received_commit_data)
@@ -265,11 +300,13 @@ let rec handle_connection world ic oc () =
                     (match req with
                     | _, Prompt -> response_tmpl
                     | _, Setup_session r -> setup_session world r
+                    | _, Session_of_pid r -> session_of_pid world r
                     | _, Reload_reftree r -> reload_reftree world r
                     | None, _ -> {response_tmpl with status=Fail; output=(Some "Operation requires session token")}
-                    | Some t, Teardown _ -> teardown t
-                    | Some t, Configure r -> enter_conf_mode r t
-                    | Some t, Exit_configure -> exit_conf_mode world t
+                    | Some t, Session_update_pid r -> session_update_pid world t r
+                    | Some t, Teardown _ -> teardown world t
+                    | Some t, Enter_configuration_mode r -> enter_conf_mode r t
+                    | Some t, Exit_configuration_mode -> exit_conf_mode world t
                     | Some t, Exists r -> exists world t r
                     | Some t, Get_value r -> get_value world t r
                     | Some t, Get_values r -> get_values world t r
@@ -280,6 +317,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Delete r -> delete world t r
                     | Some t, Discard r -> discard world t r
                     | Some t, Session_changed r -> session_changed world t r
+                    | Some t, Get_config r -> get_config world t r
                     | Some t, Load r -> load world t r
                     | Some t, Save r -> save world t r
                     | _ -> failwith "Unimplemented"
@@ -337,8 +375,14 @@ let () =
   let dirs = Directories.make !basepath vc in
   Startup.check_validators_dir dirs;
   let world = make_world vc dirs in
-  let config = Startup.load_config_failsafe
-      (FP.concat vc.config_dir vc.primary_config)
-      (FP.concat vc.config_dir vc.fallback_config) in
+  let primary_config =
+      match !legacy_config_path with
+      | true -> defaults.legacy_config_path
+      | false -> (FP.concat vc.config_dir vc.primary_config)
+  in
+  let failsafe_config = (FP.concat vc.config_dir vc.fallback_config) in
+  let config =
+      Startup.load_config_failsafe primary_config failsafe_config
+  in
   let world = Session.{world with running_config=config} in
   Lwt_main.run @@ main_loop !basepath world ()
