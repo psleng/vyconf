@@ -13,8 +13,21 @@ message Request {
   }
 
   message SetupSession {
-    optional string ClientApplication = 1;
-    optional int32 OnBehalfOf = 2;
+    required int32 ClientPid = 1;
+    optional string ClientApplication = 2;
+    optional int32 OnBehalfOf = 3;
+  }
+
+  message SessionOfPid {
+    required int32 ClientPid = 1;
+  }
+
+  message SessionUpdatePid {
+    required int32 ClientPid = 1;
+  }
+
+  message GetConfig {
+    optional int32 dummy = 1;
   }
 
   message Teardown {
@@ -151,14 +164,17 @@ message Request {
     ListChildren list_children = 16;
     RunOpMode run_op_mode = 17;
     Confirm confirm = 18;
-    EnterConfigurationMode configure = 19;
-    ExitConfigurationMode exit_configure = 20;
+    EnterConfigurationMode enter_configuration_mode = 19;
+    ExitConfigurationMode exit_configuration_mode = 20;
     Validate validate = 21;
     Teardown teardown = 22;
     ReloadReftree reload_reftree = 23;
     Load load = 24;
     Discard discard = 25;
     SessionChanged session_changed = 26;
+    SessionOfPid session_of_pid = 27;
+    SessionUpdatePid session_update_pid = 28;
+    GetConfig get_config = 29;
   }
 }
 
@@ -177,6 +193,7 @@ enum Errnum {
   INTERNAL_ERROR = 6;
   PERMISSION_DENIED = 7;
   PATH_ALREADY_EXISTS = 8;
+  UNCOMMITED_CHANGES = 9;
 }
 
 message Response {

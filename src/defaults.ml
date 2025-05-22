@@ -4,6 +4,7 @@ type vyconf_defaults = {
     socket: string;
     log_template: string;
     log_level: string;
+    legacy_config_path: string;
 }
 
 let defaults = {
@@ -12,4 +13,5 @@ let defaults = {
     socket = "/var/run/vyconfd.sock";
     log_template = "$(date) $(name)[$(pid)]: $(message)";
     log_level = "notice";
+    legacy_config_path = "/opt/vyatta/etc/config/config.boot";
 }

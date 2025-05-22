@@ -4,6 +4,7 @@ type vyconf_defaults = {
     socket: string;
     log_template: string;
     log_level: string;
+    legacy_config_path: string;
 }
 
 val defaults : vyconf_defaults

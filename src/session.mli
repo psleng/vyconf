@@ -15,12 +15,13 @@ type session_data = {
     conf_mode: bool;
     changeset: cfg_op list;
     client_app: string;
-    user: string
+    user: string;
+    client_pid: int32
 }
 
 exception Session_error of string
 
-val make : world -> string -> string -> session_data
+val make : world -> string -> string -> int32 -> session_data
 
 val set_modified : session_data -> session_data
 
@@ -49,5 +50,11 @@ val exists : world -> session_data -> string list -> bool
 val list_children : world -> session_data -> string list -> string list
 
 val string_of_op : cfg_op -> string
+
+val prepare_commit : ?dry_run:bool -> world -> session_data -> string -> Commitd_client.Commit.commit_data
+
+val get_config : world -> session_data -> string -> string
+
+val cleanup_config : world -> string -> unit
 
 val show_config : world -> session_data -> string list -> Vyconf_connect.Vyconf_pbt.request_config_format -> string

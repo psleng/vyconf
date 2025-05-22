@@ -28,6 +28,6 @@ depends: [
   "xml-light" {build}
   "toml" {build}
   "sha" {build}
-  "pcre" {build}
+  "pcre2" {build}
   "toml" {build}
 ]

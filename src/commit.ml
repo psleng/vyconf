@@ -85,12 +85,12 @@ end
 module CS = Set.Make(CI)
 
 let owner_args_from_data p o =
-    let oa = Pcre.split o in
+    let oa = Pcre2.split o in
     let owner = FilePath.basename (List.nth oa 0) in
     if List.length oa < 2 then owner, None
     else
     let var = List.nth oa 1 in
-    let res = Pcre.extract_all ~pat:"\\.\\./" var in
+    let res = Pcre2.extract_all ~pat:"\\.\\./" var in
     let var_pos = Array.length res in
     let arg_value = Vyos1x.Util.get_last_n p var_pos
     in owner, arg_value

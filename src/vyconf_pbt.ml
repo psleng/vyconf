@@ -11,8 +11,21 @@ type request_output_format =
 type request_prompt = unit
 
 type request_setup_session = {
+  client_pid : int32;
   client_application : string option;
   on_behalf_of : int32 option;
+}
+
+type request_session_of_pid = {
+  client_pid : int32;
+}
+
+type request_session_update_pid = {
+  client_pid : int32;
+}
+
+type request_get_config = {
+  dummy : int32 option;
 }
 
 type request_teardown = {
@@ -144,14 +157,17 @@ type request =
   | List_children of request_list_children
   | Run_op_mode of request_run_op_mode
   | Confirm
-  | Configure of request_enter_configuration_mode
-  | Exit_configure
+  | Enter_configuration_mode of request_enter_configuration_mode
+  | Exit_configuration_mode
   | Validate of request_validate
   | Teardown of request_teardown
   | Reload_reftree of request_reload_reftree
   | Load of request_load
   | Discard of request_discard
   | Session_changed of request_session_changed
+  | Session_of_pid of request_session_of_pid
+  | Session_update_pid of request_session_update_pid
+  | Get_config of request_get_config
 
 type request_envelope = {
   token : string option;
@@ -168,6 +184,7 @@ type errnum =
   | Internal_error 
   | Permission_denied 
   | Path_already_exists 
+  | Uncommited_changes 
 
 type response = {
   status : errnum;
@@ -183,11 +200,31 @@ let rec default_request_output_format () = (Out_plain:request_output_format)
 let rec default_request_prompt = ()
 
 let rec default_request_setup_session 
+  ?client_pid:((client_pid:int32) = 0l)
   ?client_application:((client_application:string option) = None)
   ?on_behalf_of:((on_behalf_of:int32 option) = None)
   () : request_setup_session  = {
+  client_pid;
   client_application;
   on_behalf_of;
+}
+
+let rec default_request_session_of_pid 
+  ?client_pid:((client_pid:int32) = 0l)
+  () : request_session_of_pid  = {
+  client_pid;
+}
+
+let rec default_request_session_update_pid 
+  ?client_pid:((client_pid:int32) = 0l)
+  () : request_session_update_pid  = {
+  client_pid;
+}
+
+let rec default_request_get_config 
+  ?dummy:((dummy:int32 option) = None)
+  () : request_get_config  = {
+  dummy;
 }
 
 let rec default_request_teardown 
@@ -387,13 +424,39 @@ let rec default_response
 }
 
 type request_setup_session_mutable = {
+  mutable client_pid : int32;
   mutable client_application : string option;
   mutable on_behalf_of : int32 option;
 }
 
 let default_request_setup_session_mutable () : request_setup_session_mutable = {
+  client_pid = 0l;
   client_application = None;
   on_behalf_of = None;
+}
+
+type request_session_of_pid_mutable = {
+  mutable client_pid : int32;
+}
+
+let default_request_session_of_pid_mutable () : request_session_of_pid_mutable = {
+  client_pid = 0l;
+}
+
+type request_session_update_pid_mutable = {
+  mutable client_pid : int32;
+}
+
+let default_request_session_update_pid_mutable () : request_session_update_pid_mutable = {
+  client_pid = 0l;
+}
+
+type request_get_config_mutable = {
+  mutable dummy : int32 option;
+}
+
+let default_request_get_config_mutable () : request_get_config_mutable = {
+  dummy = None;
 }
 
 type request_teardown_mutable = {
@@ -654,8 +717,27 @@ let rec pp_request_prompt fmt (v:request_prompt) =
 
 let rec pp_request_setup_session fmt (v:request_setup_session) = 
   let pp_i fmt () =
-    Pbrt.Pp.pp_record_field ~first:true "client_application" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.client_application;
+    Pbrt.Pp.pp_record_field ~first:true "client_pid" Pbrt.Pp.pp_int32 fmt v.client_pid;
+    Pbrt.Pp.pp_record_field ~first:false "client_application" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.client_application;
     Pbrt.Pp.pp_record_field ~first:false "on_behalf_of" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.on_behalf_of;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_session_of_pid fmt (v:request_session_of_pid) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "client_pid" Pbrt.Pp.pp_int32 fmt v.client_pid;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_session_update_pid fmt (v:request_session_update_pid) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "client_pid" Pbrt.Pp.pp_int32 fmt v.client_pid;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_get_config fmt (v:request_get_config) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
@@ -841,14 +923,17 @@ let rec pp_request fmt (v:request) =
   | List_children x -> Format.fprintf fmt "@[<hv2>List_children(@,%a)@]" pp_request_list_children x
   | Run_op_mode x -> Format.fprintf fmt "@[<hv2>Run_op_mode(@,%a)@]" pp_request_run_op_mode x
   | Confirm  -> Format.fprintf fmt "Confirm"
-  | Configure x -> Format.fprintf fmt "@[<hv2>Configure(@,%a)@]" pp_request_enter_configuration_mode x
-  | Exit_configure  -> Format.fprintf fmt "Exit_configure"
+  | Enter_configuration_mode x -> Format.fprintf fmt "@[<hv2>Enter_configuration_mode(@,%a)@]" pp_request_enter_configuration_mode x
+  | Exit_configuration_mode  -> Format.fprintf fmt "Exit_configuration_mode"
   | Validate x -> Format.fprintf fmt "@[<hv2>Validate(@,%a)@]" pp_request_validate x
   | Teardown x -> Format.fprintf fmt "@[<hv2>Teardown(@,%a)@]" pp_request_teardown x
   | Reload_reftree x -> Format.fprintf fmt "@[<hv2>Reload_reftree(@,%a)@]" pp_request_reload_reftree x
   | Load x -> Format.fprintf fmt "@[<hv2>Load(@,%a)@]" pp_request_load x
   | Discard x -> Format.fprintf fmt "@[<hv2>Discard(@,%a)@]" pp_request_discard x
   | Session_changed x -> Format.fprintf fmt "@[<hv2>Session_changed(@,%a)@]" pp_request_session_changed x
+  | Session_of_pid x -> Format.fprintf fmt "@[<hv2>Session_of_pid(@,%a)@]" pp_request_session_of_pid x
+  | Session_update_pid x -> Format.fprintf fmt "@[<hv2>Session_update_pid(@,%a)@]" pp_request_session_update_pid x
+  | Get_config x -> Format.fprintf fmt "@[<hv2>Get_config(@,%a)@]" pp_request_get_config x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
   let pp_i fmt () =
@@ -868,6 +953,7 @@ let rec pp_errnum fmt (v:errnum) =
   | Internal_error -> Format.fprintf fmt "Internal_error"
   | Permission_denied -> Format.fprintf fmt "Permission_denied"
   | Path_already_exists -> Format.fprintf fmt "Path_already_exists"
+  | Uncommited_changes -> Format.fprintf fmt "Uncommited_changes"
 
 let rec pp_response fmt (v:response) = 
   let pp_i fmt () =
@@ -896,16 +982,37 @@ let rec encode_pb_request_prompt (v:request_prompt) encoder =
 ()
 
 let rec encode_pb_request_setup_session (v:request_setup_session) encoder = 
+  Pbrt.Encoder.int32_as_varint v.client_pid encoder;
+  Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
   begin match v.client_application with
   | Some x -> 
     Pbrt.Encoder.string x encoder;
-    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+    Pbrt.Encoder.key 2 Pbrt.Bytes encoder; 
   | None -> ();
   end;
   begin match v.on_behalf_of with
   | Some x -> 
     Pbrt.Encoder.int32_as_varint x encoder;
-    Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
+    Pbrt.Encoder.key 3 Pbrt.Varint encoder; 
+  | None -> ();
+  end;
+  ()
+
+let rec encode_pb_request_session_of_pid (v:request_session_of_pid) encoder = 
+  Pbrt.Encoder.int32_as_varint v.client_pid encoder;
+  Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  ()
+
+let rec encode_pb_request_session_update_pid (v:request_session_update_pid) encoder = 
+  Pbrt.Encoder.int32_as_varint v.client_pid encoder;
+  Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  ()
+
+let rec encode_pb_request_get_config (v:request_get_config) encoder = 
+  begin match v.dummy with
+  | Some x -> 
+    Pbrt.Encoder.int32_as_varint x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
   | None -> ();
   end;
   ()
@@ -1210,10 +1317,10 @@ let rec encode_pb_request (v:request) encoder =
   | Confirm ->
     Pbrt.Encoder.key 18 Pbrt.Bytes encoder; 
     Pbrt.Encoder.empty_nested encoder
-  | Configure x ->
+  | Enter_configuration_mode x ->
     Pbrt.Encoder.nested encode_pb_request_enter_configuration_mode x encoder;
     Pbrt.Encoder.key 19 Pbrt.Bytes encoder; 
-  | Exit_configure ->
+  | Exit_configuration_mode ->
     Pbrt.Encoder.key 20 Pbrt.Bytes encoder; 
     Pbrt.Encoder.empty_nested encoder
   | Validate x ->
@@ -1234,6 +1341,15 @@ let rec encode_pb_request (v:request) encoder =
   | Session_changed x ->
     Pbrt.Encoder.nested encode_pb_request_session_changed x encoder;
     Pbrt.Encoder.key 26 Pbrt.Bytes encoder; 
+  | Session_of_pid x ->
+    Pbrt.Encoder.nested encode_pb_request_session_of_pid x encoder;
+    Pbrt.Encoder.key 27 Pbrt.Bytes encoder; 
+  | Session_update_pid x ->
+    Pbrt.Encoder.nested encode_pb_request_session_update_pid x encoder;
+    Pbrt.Encoder.key 28 Pbrt.Bytes encoder; 
+  | Get_config x ->
+    Pbrt.Encoder.nested encode_pb_request_get_config x encoder;
+    Pbrt.Encoder.key 29 Pbrt.Bytes encoder; 
   end
 
 let rec encode_pb_request_envelope (v:request_envelope) encoder = 
@@ -1258,6 +1374,7 @@ let rec encode_pb_errnum (v:errnum) encoder =
   | Internal_error -> Pbrt.Encoder.int_as_varint 6 encoder
   | Permission_denied -> Pbrt.Encoder.int_as_varint 7 encoder
   | Path_already_exists -> Pbrt.Encoder.int_as_varint 8 encoder
+  | Uncommited_changes -> Pbrt.Encoder.int_as_varint 9 encoder
 
 let rec encode_pb_response (v:response) encoder = 
   encode_pb_errnum v.status encoder;
@@ -1307,26 +1424,92 @@ let rec decode_pb_request_prompt d =
 let rec decode_pb_request_setup_session d =
   let v = default_request_setup_session_mutable () in
   let continue__= ref true in
+  let client_pid_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
     ); continue__ := false
-    | Some (1, Pbrt.Bytes) -> begin
-      v.client_application <- Some (Pbrt.Decoder.string d);
+    | Some (1, Pbrt.Varint) -> begin
+      v.client_pid <- Pbrt.Decoder.int32_as_varint d; client_pid_is_set := true;
     end
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(1)" pk
-    | Some (2, Pbrt.Varint) -> begin
-      v.on_behalf_of <- Some (Pbrt.Decoder.int32_as_varint d);
+    | Some (2, Pbrt.Bytes) -> begin
+      v.client_application <- Some (Pbrt.Decoder.string d);
     end
     | Some (2, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(2)" pk
+    | Some (3, Pbrt.Varint) -> begin
+      v.on_behalf_of <- Some (Pbrt.Decoder.int32_as_varint d);
+    end
+    | Some (3, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(3)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
+  begin if not !client_pid_is_set then Pbrt.Decoder.missing_field "client_pid" end;
   ({
+    client_pid = v.client_pid;
     client_application = v.client_application;
     on_behalf_of = v.on_behalf_of;
   } : request_setup_session)
+
+let rec decode_pb_request_session_of_pid d =
+  let v = default_request_session_of_pid_mutable () in
+  let continue__= ref true in
+  let client_pid_is_set = ref false in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.client_pid <- Pbrt.Decoder.int32_as_varint d; client_pid_is_set := true;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_session_of_pid), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  begin if not !client_pid_is_set then Pbrt.Decoder.missing_field "client_pid" end;
+  ({
+    client_pid = v.client_pid;
+  } : request_session_of_pid)
+
+let rec decode_pb_request_session_update_pid d =
+  let v = default_request_session_update_pid_mutable () in
+  let continue__= ref true in
+  let client_pid_is_set = ref false in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.client_pid <- Pbrt.Decoder.int32_as_varint d; client_pid_is_set := true;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_session_update_pid), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  begin if not !client_pid_is_set then Pbrt.Decoder.missing_field "client_pid" end;
+  ({
+    client_pid = v.client_pid;
+  } : request_session_update_pid)
+
+let rec decode_pb_request_get_config d =
+  let v = default_request_get_config_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.dummy <- Some (Pbrt.Decoder.int32_as_varint d);
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_get_config), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    dummy = v.dummy;
+  } : request_get_config)
 
 let rec decode_pb_request_teardown d =
   let v = default_request_teardown_mutable () in
@@ -1906,10 +2089,10 @@ let rec decode_pb_request d =
         Pbrt.Decoder.empty_nested d ;
         (Confirm : request)
       end
-      | Some (19, _) -> (Configure (decode_pb_request_enter_configuration_mode (Pbrt.Decoder.nested d)) : request) 
+      | Some (19, _) -> (Enter_configuration_mode (decode_pb_request_enter_configuration_mode (Pbrt.Decoder.nested d)) : request) 
       | Some (20, _) -> begin 
         Pbrt.Decoder.empty_nested d ;
-        (Exit_configure : request)
+        (Exit_configuration_mode : request)
       end
       | Some (21, _) -> (Validate (decode_pb_request_validate (Pbrt.Decoder.nested d)) : request) 
       | Some (22, _) -> (Teardown (decode_pb_request_teardown (Pbrt.Decoder.nested d)) : request) 
@@ -1917,6 +2100,9 @@ let rec decode_pb_request d =
       | Some (24, _) -> (Load (decode_pb_request_load (Pbrt.Decoder.nested d)) : request) 
       | Some (25, _) -> (Discard (decode_pb_request_discard (Pbrt.Decoder.nested d)) : request) 
       | Some (26, _) -> (Session_changed (decode_pb_request_session_changed (Pbrt.Decoder.nested d)) : request) 
+      | Some (27, _) -> (Session_of_pid (decode_pb_request_session_of_pid (Pbrt.Decoder.nested d)) : request) 
+      | Some (28, _) -> (Session_update_pid (decode_pb_request_session_update_pid (Pbrt.Decoder.nested d)) : request) 
+      | Some (29, _) -> (Get_config (decode_pb_request_get_config (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 
         loop () 
@@ -1963,6 +2149,7 @@ let rec decode_pb_errnum d =
   | 6 -> (Internal_error:errnum)
   | 7 -> (Permission_denied:errnum)
   | 8 -> (Path_already_exists:errnum)
+  | 9 -> (Uncommited_changes:errnum)
   | _ -> Pbrt.Decoder.malformed_variant "errnum"
 
 let rec decode_pb_response d =
