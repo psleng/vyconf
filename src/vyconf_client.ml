@@ -65,6 +65,13 @@ let setup_session ?(on_behalf_of=None) client client_app pid =
          | None -> Error "setup_session did not return a session token!") |> Lwt.return
     | _ -> Error (Option.value resp.error ~default:"Unknown error") |> Lwt.return
 
+let session_of_pid client pid =
+    let req = Session_of_pid {client_pid=pid} in
+    let%lwt resp = do_request client req in
+    (match resp.output with
+     | Some token -> Ok {client with session=(Some token)}
+     | None -> Error "no such session") |> Lwt.return
+
 let teardown_session ?(on_behalf_of=None) client =
     let id = on_behalf_of |> (function None -> None | Some x -> (Some (Int32.of_int x))) in
     let req = Teardown {on_behalf_of=id} in
@@ -128,6 +135,22 @@ let set client path =
 
 let delete client path =
     let req = Delete {path=path;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> Lwt.return (Ok "")
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let session_changed client =
+    let req = Session_changed {dummy=None;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> Lwt.return (Ok "")
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let discard client =
+    let req = Discard {dummy=None;} in
     let%lwt resp = do_request client req in
     match resp.status with
     | Success -> Lwt.return (Ok "")
