@@ -10,6 +10,8 @@ val prompt : t -> Vyconf_connect.Vyconf_pbt.response Lwt.t
 
 val setup_session : ?on_behalf_of:(int option) -> t -> string -> int32 -> (t, string) result Lwt.t
 
+val session_of_pid : t -> int32 -> (t, string) result Lwt.t
+
 val teardown_session : ?on_behalf_of:(int option) -> t -> (string, string) result Lwt.t
 
 val exists : t -> string list -> (string, string) result Lwt.t
@@ -28,7 +30,10 @@ val set : t -> string list -> (string, string) result Lwt.t
 
 val delete : t -> string list -> (string, string) result Lwt.t
 
-val commit : t -> (string, string) result Lwt.t
+val session_changed : t -> (string, string) result Lwt.t
 
+val discard : t -> (string, string) result Lwt.t
+
+val commit : t -> (string, string) result Lwt.t
 
 val reload_reftree : ?on_behalf_of:(int option) -> t -> (string, string) result Lwt.t
