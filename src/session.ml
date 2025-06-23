@@ -127,8 +127,16 @@ let session_changed w s =
     let del_tree = CT.get_subtree diff ["del"] in
     (del_tree <> CT.default) || (add_tree <> CT.default)
 
-let load w s file =
-    let ct = Vyos1x.Config_file.load_config file in
+let load w s file cached =
+    let ct =
+        if cached then
+            try
+                Ok (IC.read_internal file)
+            with Vyos1x.Internal.Read_error e ->
+                Error e
+        else
+            Vyos1x.Config_file.load_config file
+    in
     match ct with
     | Error e -> raise (Session_error (Printf.sprintf "Error loading config: %s" e))
     | Ok config ->

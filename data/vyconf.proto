@@ -85,7 +85,8 @@ message Request {
 
   message Load {
     required string Location = 1;
-    optional ConfigFormat format = 2;
+    required bool cached = 2;
+    optional ConfigFormat format = 3;
   }
 
   message Merge {

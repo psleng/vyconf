@@ -217,7 +217,7 @@ let discard world token (_req: request_discard) =
 
 let load world token (req: request_load) =
     try
-        let session = Session.load world (find_session token) req.location
+        let session = Session.load world (find_session token) req.location req.cached
         in
         Hashtbl.replace sessions token session;
         response_tmpl

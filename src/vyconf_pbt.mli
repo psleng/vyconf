@@ -90,6 +90,7 @@ type request_rollback = {
 
 type request_load = {
   location : string;
+  cached : bool;
   format : request_config_format option;
 }
 
@@ -315,6 +316,7 @@ val default_request_rollback :
 
 val default_request_load : 
   ?location:string ->
+  ?cached:bool ->
   ?format:request_config_format option ->
   unit ->
   request_load
