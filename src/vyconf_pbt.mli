@@ -96,6 +96,7 @@ type request_load = {
 
 type request_merge = {
   location : string;
+  destructive : bool;
   format : request_config_format option;
 }
 
@@ -324,6 +325,7 @@ val default_request_load :
 
 val default_request_merge : 
   ?location:string ->
+  ?destructive:bool ->
   ?format:request_config_format option ->
   unit ->
   request_merge

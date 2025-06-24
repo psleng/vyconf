@@ -142,6 +142,16 @@ let load w s file cached =
     | Ok config ->
         validate_tree w config; {s with proposed_config=config;}
 
+let merge w s file destructive =
+    let ct = Vyos1x.Config_file.load_config file in
+    match ct with
+    | Error e -> raise (Session_error (Printf.sprintf "Error loading config: %s" e))
+    | Ok config ->
+        let () = validate_tree w config in
+        let merged = CD.tree_merge ~destructive:destructive s.proposed_config config
+        in
+        {s with proposed_config=merged;}
+
 let save w s file =
     let ct = w.running_config in
     let res = Vyos1x.Config_file.save_config ct file in

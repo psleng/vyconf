@@ -39,6 +39,8 @@ val session_changed : world -> session_data -> bool
 
 val load : world -> session_data -> string -> bool -> session_data
 
+val merge : world -> session_data -> string -> bool -> session_data
+
 val save : world -> session_data -> string -> session_data
 
 val get_value : world -> session_data -> string list -> string
