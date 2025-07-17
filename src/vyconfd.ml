@@ -217,7 +217,15 @@ let discard world token (_req: request_discard) =
 
 let load world token (req: request_load) =
     try
-        let session = Session.load world (find_session token) req.location
+        let session = Session.load world (find_session token) req.location req.cached
+        in
+        Hashtbl.replace sessions token session;
+        response_tmpl
+    with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
+
+let merge world token (req: request_merge) =
+    try
+        let session = Session.merge world (find_session token) req.location req.destructive
         in
         Hashtbl.replace sessions token session;
         response_tmpl
@@ -319,6 +327,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Session_changed r -> session_changed world t r
                     | Some t, Get_config r -> get_config world t r
                     | Some t, Load r -> load world t r
+                    | Some t, Merge r -> merge world t r
                     | Some t, Save r -> save world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return

@@ -37,7 +37,9 @@ val discard : world -> session_data -> session_data
 
 val session_changed : world -> session_data -> bool
 
-val load : world -> session_data -> string -> session_data
+val load : world -> session_data -> string -> bool -> session_data
+
+val merge : world -> session_data -> string -> bool -> session_data
 
 val save : world -> session_data -> string -> session_data
 
