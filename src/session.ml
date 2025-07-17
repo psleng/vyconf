@@ -104,8 +104,12 @@ let set w s path =
             apply_cfg_op op s.proposed_config |>
             (fun c -> RT.set_tag_data w.reference_tree c path) |>
             (fun c -> RT.set_leaf_data w.reference_tree c path)
-        with CT.Useless_set ->
+        with
+        | CT.Useless_set ->
             raise (Session_error (Printf.sprintf "Useless set, path: %s" (string_of_op op)))
+        | CT.Duplicate_value ->
+            raise (Session_error (Printf.sprintf "Duplicate value, path: %s" (string_of_op op)))
+
     in
     {s with proposed_config=config; changeset=(op :: s.changeset)}
 
@@ -127,12 +131,30 @@ let session_changed w s =
     let del_tree = CT.get_subtree diff ["del"] in
     (del_tree <> CT.default) || (add_tree <> CT.default)
 
-let load w s file =
-    let ct = Vyos1x.Config_file.load_config file in
+let load w s file cached =
+    let ct =
+        if cached then
+            try
+                Ok (IC.read_internal file)
+            with Vyos1x.Internal.Read_error e ->
+                Error e
+        else
+            Vyos1x.Config_file.load_config file
+    in
     match ct with
     | Error e -> raise (Session_error (Printf.sprintf "Error loading config: %s" e))
     | Ok config ->
         validate_tree w config; {s with proposed_config=config;}
+
+let merge w s file destructive =
+    let ct = Vyos1x.Config_file.load_config file in
+    match ct with
+    | Error e -> raise (Session_error (Printf.sprintf "Error loading config: %s" e))
+    | Ok config ->
+        let () = validate_tree w config in
+        let merged = CD.tree_merge ~destructive:destructive s.proposed_config config
+        in
+        {s with proposed_config=merged;}
 
 let save w s file =
     let ct = w.running_config in

@@ -29,6 +29,14 @@ let output_format_of_string s =
     | "json" ->	Out_json
     | _	-> failwith (Printf.sprintf "Unknown output format %s, should be plain or json" s)
 
+let in_cli_config_session () =
+    let env = Unix.environment () in
+    let res = Array.find_opt (fun c -> String.starts_with ~prefix:"_OFR_CONFIGURE" c) env
+    in
+    match res with
+    | Some _ -> true
+    | None -> false
+
 let get_session () =
     let pid = Int32.of_int (Unix.getppid()) in
     let socket = "/var/run/vyconfd.sock" in
@@ -41,6 +49,13 @@ let get_session () =
     match resp with
     | Error _ -> setup_session client "vyconf_cli" pid
     | _ as c -> c |> Lwt.return
+
+let close_session () =
+    let%lwt client = get_session () in
+    match client with
+    | Ok c ->
+        teardown_session c
+    | Error e -> Error e |> Lwt.return
 
 let main op path =
     let%lwt client = get_session () in
@@ -56,6 +71,10 @@ let main op path =
         | OpSessionChanged -> session_changed c
         end
     | Error e -> Error e |> Lwt.return
+    in
+    let () =
+        if not (in_cli_config_session ()) then
+            close_session () |> Lwt.ignore_result
     in
     match result with
     | Ok s -> let%lwt () = Lwt_io.write Lwt_io.stdout s in Lwt.return 0

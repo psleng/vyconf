@@ -83,11 +83,13 @@ type request_rollback = {
 
 type request_load = {
   location : string;
+  cached : bool;
   format : request_config_format option;
 }
 
 type request_merge = {
   location : string;
+  destructive : bool;
   format : request_config_format option;
 }
 
@@ -313,17 +315,21 @@ let rec default_request_rollback
 
 let rec default_request_load 
   ?location:((location:string) = "")
+  ?cached:((cached:bool) = false)
   ?format:((format:request_config_format option) = None)
   () : request_load  = {
   location;
+  cached;
   format;
 }
 
 let rec default_request_merge 
   ?location:((location:string) = "")
+  ?destructive:((destructive:bool) = false)
   ?format:((format:request_config_format option) = None)
   () : request_merge  = {
   location;
+  destructive;
   format;
 }
 
@@ -567,21 +573,25 @@ let default_request_rollback_mutable () : request_rollback_mutable = {
 
 type request_load_mutable = {
   mutable location : string;
+  mutable cached : bool;
   mutable format : request_config_format option;
 }
 
 let default_request_load_mutable () : request_load_mutable = {
   location = "";
+  cached = false;
   format = None;
 }
 
 type request_merge_mutable = {
   mutable location : string;
+  mutable destructive : bool;
   mutable format : request_config_format option;
 }
 
 let default_request_merge_mutable () : request_merge_mutable = {
   location = "";
+  destructive = false;
   format = None;
 }
 
@@ -819,6 +829,7 @@ let rec pp_request_rollback fmt (v:request_rollback) =
 let rec pp_request_load fmt (v:request_load) = 
   let pp_i fmt () =
     Pbrt.Pp.pp_record_field ~first:true "location" Pbrt.Pp.pp_string fmt v.location;
+    Pbrt.Pp.pp_record_field ~first:false "cached" Pbrt.Pp.pp_bool fmt v.cached;
     Pbrt.Pp.pp_record_field ~first:false "format" (Pbrt.Pp.pp_option pp_request_config_format) fmt v.format;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
@@ -826,6 +837,7 @@ let rec pp_request_load fmt (v:request_load) =
 let rec pp_request_merge fmt (v:request_merge) = 
   let pp_i fmt () =
     Pbrt.Pp.pp_record_field ~first:true "location" Pbrt.Pp.pp_string fmt v.location;
+    Pbrt.Pp.pp_record_field ~first:false "destructive" Pbrt.Pp.pp_bool fmt v.destructive;
     Pbrt.Pp.pp_record_field ~first:false "format" (Pbrt.Pp.pp_option pp_request_config_format) fmt v.format;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
@@ -1137,10 +1149,12 @@ let rec encode_pb_request_rollback (v:request_rollback) encoder =
 let rec encode_pb_request_load (v:request_load) encoder = 
   Pbrt.Encoder.string v.location encoder;
   Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  Pbrt.Encoder.bool v.cached encoder;
+  Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
   begin match v.format with
   | Some x -> 
     encode_pb_request_config_format x encoder;
-    Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
+    Pbrt.Encoder.key 3 Pbrt.Varint encoder; 
   | None -> ();
   end;
   ()
@@ -1148,10 +1162,12 @@ let rec encode_pb_request_load (v:request_load) encoder =
 let rec encode_pb_request_merge (v:request_merge) encoder = 
   Pbrt.Encoder.string v.location encoder;
   Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  Pbrt.Encoder.bool v.destructive encoder;
+  Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
   begin match v.format with
   | Some x -> 
     encode_pb_request_config_format x encoder;
-    Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
+    Pbrt.Encoder.key 3 Pbrt.Varint encoder; 
   | None -> ();
   end;
   ()
@@ -1784,6 +1800,7 @@ let rec decode_pb_request_rollback d =
 let rec decode_pb_request_load d =
   let v = default_request_load_mutable () in
   let continue__= ref true in
+  let cached_is_set = ref false in
   let location_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
@@ -1795,21 +1812,29 @@ let rec decode_pb_request_load d =
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_load), field(1)" pk
     | Some (2, Pbrt.Varint) -> begin
-      v.format <- Some (decode_pb_request_config_format d);
+      v.cached <- Pbrt.Decoder.bool d; cached_is_set := true;
     end
     | Some (2, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_load), field(2)" pk
+    | Some (3, Pbrt.Varint) -> begin
+      v.format <- Some (decode_pb_request_config_format d);
+    end
+    | Some (3, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_load), field(3)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
+  begin if not !cached_is_set then Pbrt.Decoder.missing_field "cached" end;
   begin if not !location_is_set then Pbrt.Decoder.missing_field "location" end;
   ({
     location = v.location;
+    cached = v.cached;
     format = v.format;
   } : request_load)
 
 let rec decode_pb_request_merge d =
   let v = default_request_merge_mutable () in
   let continue__= ref true in
+  let destructive_is_set = ref false in
   let location_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
@@ -1821,15 +1846,22 @@ let rec decode_pb_request_merge d =
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_merge), field(1)" pk
     | Some (2, Pbrt.Varint) -> begin
-      v.format <- Some (decode_pb_request_config_format d);
+      v.destructive <- Pbrt.Decoder.bool d; destructive_is_set := true;
     end
     | Some (2, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_merge), field(2)" pk
+    | Some (3, Pbrt.Varint) -> begin
+      v.format <- Some (decode_pb_request_config_format d);
+    end
+    | Some (3, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_merge), field(3)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
+  begin if not !destructive_is_set then Pbrt.Decoder.missing_field "destructive" end;
   begin if not !location_is_set then Pbrt.Decoder.missing_field "location" end;
   ({
     location = v.location;
+    destructive = v.destructive;
     format = v.format;
   } : request_merge)
 
