@@ -105,10 +105,7 @@ let set w s path =
             (fun c -> RT.set_tag_data w.reference_tree c path) |>
             (fun c -> RT.set_leaf_data w.reference_tree c path)
         with
-        | CT.Useless_set ->
-            raise (Session_error (Printf.sprintf "Useless set, path: %s" (string_of_op op)))
-        | CT.Duplicate_value ->
-            raise (Session_error (Printf.sprintf "Duplicate value, path: %s" (string_of_op op)))
+        | CT.Useless_set | CT.Duplicate_value -> s.proposed_config
 
     in
     {s with proposed_config=config; changeset=(op :: s.changeset)}
