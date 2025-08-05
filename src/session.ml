@@ -110,10 +110,25 @@ let set w s path =
     in
     {s with proposed_config=config; changeset=(op :: s.changeset)}
 
+let prune_del_path node path =
+    if CT.is_tag_value node path then
+        let tag_path = Vyos1x.Util.drop_last path in
+        let terminal = VT.is_terminal_path node tag_path in
+        match terminal with
+        | true -> CT.delete node tag_path None
+        | false -> node
+    else node
+
 let delete w s path =
     let path, value = split_path w s path in
     let op = CfgDelete (path, value) in
-    let config = apply_cfg_op op s.proposed_config in
+    let config =
+        try
+            apply_cfg_op op s.proposed_config |>
+            (fun c -> prune_del_path c path)
+        with
+        | VT.Nonexistent_path | CT.No_such_value -> s.proposed_config
+    in
     {s with proposed_config=config; changeset=(op :: s.changeset)}
 
 let discard w s =
