@@ -75,17 +75,8 @@ let validate w _s path =
         RT.validate_path D.(w.dirs.validators) w.reference_tree path
     with RT.Validation_error x -> raise (Session_error x)
 
-let validate_tree w' t =
-    let validate_path w out path =
-        let res =
-            try
-                RT.validate_path D.(w.dirs.validators) w.reference_tree path;
-                out
-            with RT.Validation_error x -> out ^ x
-        in res
-    in
-    let paths = CT.value_paths_of_tree t in
-    let out = List.fold_left (validate_path w') "" paths in
+let validate_tree w t =
+    let out = RT.validate_tree D.(w.dirs.validators) w.reference_tree t in
     match out with
     | "" -> ()
     | _ -> raise (Session_error out)
