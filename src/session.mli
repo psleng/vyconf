@@ -25,13 +25,15 @@ val make : world -> string -> string -> int32 -> session_data
 
 val set_modified : session_data -> session_data
 
-val apply_changes : cfg_op list -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t
-
 val validate : world -> session_data -> string list -> unit
+
+val get_changeset : world -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> cfg_op list
 
 val set : world -> session_data -> string list -> session_data
 
 val delete : world -> session_data -> string list -> session_data
+
+val get_proposed_config : world -> session_data -> Vyos1x.Config_tree.t
 
 val discard : world -> session_data -> session_data
 
@@ -53,7 +55,7 @@ val list_children : world -> session_data -> string list -> string list
 
 val string_of_op : cfg_op -> string
 
-val prepare_commit : ?dry_run:bool -> world -> session_data -> string -> Commitd_client.Commit.commit_data
+val prepare_commit : ?dry_run:bool -> world -> Vyos1x.Config_tree.t -> string -> Commitd_client.Commit.commit_data
 
 val get_config : world -> session_data -> string -> string
 
