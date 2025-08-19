@@ -53,20 +53,26 @@ let string_of_op op =
          | None -> Printf.sprintf "delete %s" path_str
          | Some v -> Printf.sprintf "delete %s \"%s\"" path_str v)
 
-
 let set_modified s =
     if s.modified = true then s
     else {s with modified = true}
 
 let apply_cfg_op w op config =
-    let config =
+    let result =
     match op with
     | CfgSet (path, value, value_behaviour) ->
         begin
+        let rt = w.reference_tree in
+        let refp = RT.refpath rt path in
         try
-            CT.set config path value value_behaviour |>
-            (fun c -> RT.set_tag_data w.reference_tree c path) |>
-            (fun c -> RT.set_leaf_data w.reference_tree c path)
+            let c =
+            match (RT.is_leaf rt refp) with
+            | true ->
+                CT.set config path value value_behaviour
+            | false ->
+                CT.create_node config path
+            in
+            RT.set_tag_data rt c path
         with
         | CT.Useless_set | CT.Duplicate_value -> config
         end
@@ -78,7 +84,7 @@ let apply_cfg_op w op config =
         with
         | VT.Nonexistent_path | CT.No_such_value -> config
         end
-    in config
+    in result
 
 let rec apply_changes w changeset config =
     match changeset with
