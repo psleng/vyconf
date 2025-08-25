@@ -240,9 +240,10 @@ let save world token (req: request_save) =
 
 let commit world token (req: request_commit) =
     let s = find_session token in
+    let proposed_config = Session.get_proposed_config world s in
     let req_dry_run = Option.value req.dry_run ~default:false in
 
-    let commit_data = Session.prepare_commit ~dry_run:req_dry_run world s token
+    let commit_data = Session.prepare_commit ~dry_run:req_dry_run world proposed_config token
     in
     let%lwt received_commit_data = VC.do_commit commit_data in
     let%lwt result_commit_data =
@@ -263,6 +264,14 @@ let commit world token (req: request_commit) =
             (* partial commit *)
             if not req_dry_run then
                 world.Session.running_config <- result_commit_data.config_result;
+                let session =
+                    { s with changeset =
+                        Session.get_changeset
+                        world
+                        world.Session.running_config
+                        proposed_config }
+                in Hashtbl.replace sessions token session;
+
             let success, msg_str =
                 result_commit_data.result.success, result_commit_data.result.out
             in
