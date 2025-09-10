@@ -22,8 +22,8 @@ message Request {
     required int32 client_pid = 1;
   }
 
-  message SessionUpdatePid {
-    required int32 client_pid = 1;
+  message SessionExists {
+    optional int32 dummy = 1;
   }
 
   message GetConfig {
@@ -175,7 +175,7 @@ message Request {
     Discard discard = 25;
     SessionChanged session_changed = 26;
     SessionOfPid session_of_pid = 27;
-    SessionUpdatePid session_update_pid = 28;
+    SessionExists session_exists = 28;
     GetConfig get_config = 29;
   }
 }

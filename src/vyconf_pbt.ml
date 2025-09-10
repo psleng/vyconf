@@ -20,8 +20,8 @@ type request_session_of_pid = {
   client_pid : int32;
 }
 
-type request_session_update_pid = {
-  client_pid : int32;
+type request_session_exists = {
+  dummy : int32 option;
 }
 
 type request_get_config = {
@@ -168,7 +168,7 @@ type request =
   | Discard of request_discard
   | Session_changed of request_session_changed
   | Session_of_pid of request_session_of_pid
-  | Session_update_pid of request_session_update_pid
+  | Session_exists of request_session_exists
   | Get_config of request_get_config
 
 type request_envelope = {
@@ -217,10 +217,10 @@ let rec default_request_session_of_pid
   client_pid;
 }
 
-let rec default_request_session_update_pid 
-  ?client_pid:((client_pid:int32) = 0l)
-  () : request_session_update_pid  = {
-  client_pid;
+let rec default_request_session_exists 
+  ?dummy:((dummy:int32 option) = None)
+  () : request_session_exists  = {
+  dummy;
 }
 
 let rec default_request_get_config 
@@ -449,12 +449,12 @@ let default_request_session_of_pid_mutable () : request_session_of_pid_mutable =
   client_pid = 0l;
 }
 
-type request_session_update_pid_mutable = {
-  mutable client_pid : int32;
+type request_session_exists_mutable = {
+  mutable dummy : int32 option;
 }
 
-let default_request_session_update_pid_mutable () : request_session_update_pid_mutable = {
-  client_pid = 0l;
+let default_request_session_exists_mutable () : request_session_exists_mutable = {
+  dummy = None;
 }
 
 type request_get_config_mutable = {
@@ -739,9 +739,9 @@ let rec pp_request_session_of_pid fmt (v:request_session_of_pid) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
-let rec pp_request_session_update_pid fmt (v:request_session_update_pid) = 
+let rec pp_request_session_exists fmt (v:request_session_exists) = 
   let pp_i fmt () =
-    Pbrt.Pp.pp_record_field ~first:true "client_pid" Pbrt.Pp.pp_int32 fmt v.client_pid;
+    Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
@@ -944,7 +944,7 @@ let rec pp_request fmt (v:request) =
   | Discard x -> Format.fprintf fmt "@[<hv2>Discard(@,%a)@]" pp_request_discard x
   | Session_changed x -> Format.fprintf fmt "@[<hv2>Session_changed(@,%a)@]" pp_request_session_changed x
   | Session_of_pid x -> Format.fprintf fmt "@[<hv2>Session_of_pid(@,%a)@]" pp_request_session_of_pid x
-  | Session_update_pid x -> Format.fprintf fmt "@[<hv2>Session_update_pid(@,%a)@]" pp_request_session_update_pid x
+  | Session_exists x -> Format.fprintf fmt "@[<hv2>Session_exists(@,%a)@]" pp_request_session_exists x
   | Get_config x -> Format.fprintf fmt "@[<hv2>Get_config(@,%a)@]" pp_request_get_config x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
@@ -1015,9 +1015,13 @@ let rec encode_pb_request_session_of_pid (v:request_session_of_pid) encoder =
   Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
   ()
 
-let rec encode_pb_request_session_update_pid (v:request_session_update_pid) encoder = 
-  Pbrt.Encoder.int32_as_varint v.client_pid encoder;
-  Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+let rec encode_pb_request_session_exists (v:request_session_exists) encoder = 
+  begin match v.dummy with
+  | Some x -> 
+    Pbrt.Encoder.int32_as_varint x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  | None -> ();
+  end;
   ()
 
 let rec encode_pb_request_get_config (v:request_get_config) encoder = 
@@ -1360,8 +1364,8 @@ let rec encode_pb_request (v:request) encoder =
   | Session_of_pid x ->
     Pbrt.Encoder.nested encode_pb_request_session_of_pid x encoder;
     Pbrt.Encoder.key 27 Pbrt.Bytes encoder; 
-  | Session_update_pid x ->
-    Pbrt.Encoder.nested encode_pb_request_session_update_pid x encoder;
+  | Session_exists x ->
+    Pbrt.Encoder.nested encode_pb_request_session_exists x encoder;
     Pbrt.Encoder.key 28 Pbrt.Bytes encoder; 
   | Get_config x ->
     Pbrt.Encoder.nested encode_pb_request_get_config x encoder;
@@ -1489,25 +1493,23 @@ let rec decode_pb_request_session_of_pid d =
     client_pid = v.client_pid;
   } : request_session_of_pid)
 
-let rec decode_pb_request_session_update_pid d =
-  let v = default_request_session_update_pid_mutable () in
+let rec decode_pb_request_session_exists d =
+  let v = default_request_session_exists_mutable () in
   let continue__= ref true in
-  let client_pid_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
     ); continue__ := false
     | Some (1, Pbrt.Varint) -> begin
-      v.client_pid <- Pbrt.Decoder.int32_as_varint d; client_pid_is_set := true;
+      v.dummy <- Some (Pbrt.Decoder.int32_as_varint d);
     end
     | Some (1, pk) -> 
-      Pbrt.Decoder.unexpected_payload "Message(request_session_update_pid), field(1)" pk
+      Pbrt.Decoder.unexpected_payload "Message(request_session_exists), field(1)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
-  begin if not !client_pid_is_set then Pbrt.Decoder.missing_field "client_pid" end;
   ({
-    client_pid = v.client_pid;
-  } : request_session_update_pid)
+    dummy = v.dummy;
+  } : request_session_exists)
 
 let rec decode_pb_request_get_config d =
   let v = default_request_get_config_mutable () in
@@ -2133,7 +2135,7 @@ let rec decode_pb_request d =
       | Some (25, _) -> (Discard (decode_pb_request_discard (Pbrt.Decoder.nested d)) : request) 
       | Some (26, _) -> (Session_changed (decode_pb_request_session_changed (Pbrt.Decoder.nested d)) : request) 
       | Some (27, _) -> (Session_of_pid (decode_pb_request_session_of_pid (Pbrt.Decoder.nested d)) : request) 
-      | Some (28, _) -> (Session_update_pid (decode_pb_request_session_update_pid (Pbrt.Decoder.nested d)) : request) 
+      | Some (28, _) -> (Session_exists (decode_pb_request_session_exists (Pbrt.Decoder.nested d)) : request) 
       | Some (29, _) -> (Get_config (decode_pb_request_get_config (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 

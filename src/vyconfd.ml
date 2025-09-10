@@ -77,15 +77,9 @@ let session_of_pid _world (req: request_session_of_pid) =
     let extant = find_session_by_pid pid in
     {response_tmpl with output=extant}
 
-let session_update_pid _world token (req: request_session_update_pid) =
-    let pid = req.client_pid in
+let session_exists _world token (_req: request_session_exists) =
     try
-        begin
-        let s = Hashtbl.find sessions token in
-        if s.client_pid <> pid then
-            let session = {s with client_pid=pid} in
-            Hashtbl.replace sessions token session
-        end;
+        let _ = Hashtbl.find sessions token in
         {response_tmpl with output=(Some token)}
     with Not_found -> {response_tmpl with status=Fail; output=None}
 
@@ -320,7 +314,7 @@ let rec handle_connection world ic oc () =
                     | _, Session_of_pid r -> session_of_pid world r
                     | _, Reload_reftree r -> reload_reftree world r
                     | None, _ -> {response_tmpl with status=Fail; output=(Some "Operation requires session token")}
-                    | Some t, Session_update_pid r -> session_update_pid world t r
+                    | Some t, Session_exists r -> session_exists world t r
                     | Some t, Teardown _ -> teardown world t
                     | Some t, Enter_configuration_mode r -> enter_conf_mode r t
                     | Some t, Exit_configuration_mode -> exit_conf_mode world t
