@@ -21,6 +21,8 @@ type request_setup_session = {
   client_pid : int32;
   client_application : string option;
   on_behalf_of : int32 option;
+  client_user : string option;
+  client_sudo_user : string option;
 }
 
 type request_session_of_pid = {
@@ -218,6 +220,8 @@ val default_request_setup_session :
   ?client_pid:int32 ->
   ?client_application:string option ->
   ?on_behalf_of:int32 option ->
+  ?client_user:string option ->
+  ?client_sudo_user:string option ->
   unit ->
   request_setup_session
 (** [default_request_setup_session ()] is the default value for type [request_setup_session] *)

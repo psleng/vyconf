@@ -8,7 +8,7 @@ val shutdown : t -> t Lwt.t
 
 val prompt : t -> Vyconf_connect.Vyconf_pbt.response Lwt.t
 
-val setup_session : ?on_behalf_of:(int option) -> t -> string -> int32 -> (t, string) result Lwt.t
+val setup_session : ?on_behalf_of:(int option) -> t -> string -> string -> string -> int32 -> (t, string) result Lwt.t
 
 val session_of_pid : t -> int32 -> (t, string) result Lwt.t
 

@@ -67,9 +67,18 @@ let make_session_token () =
 let setup_session world (req: request_setup_session) =
     let token = make_session_token () in
     let pid = req.client_pid in
-    let user = "unknown user" in
+    let user =
+        match req.client_user with
+        | None -> ""
+        | Some u -> u
+    in
+    let sudo_user =
+        match req.client_sudo_user with
+        | None -> ""
+        | Some u -> u
+    in
     let client_app = Option.value req.client_application ~default:"unknown client" in
-    let () = Hashtbl.add sessions token (Session.make world client_app user pid) in
+    let () = Hashtbl.add sessions token (Session.make world client_app sudo_user user pid) in
     {response_tmpl with output=(Some token)}
 
 let session_of_pid _world (req: request_session_of_pid) =

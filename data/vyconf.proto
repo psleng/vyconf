@@ -16,6 +16,8 @@ message Request {
     required int32 client_pid = 1;
     optional string client_application = 2;
     optional int32 on_behalf_of = 3;
+    optional string client_user = 4;
+    optional string client_sudo_user = 5;
   }
 
   message SessionOfPid {

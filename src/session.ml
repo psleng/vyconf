@@ -26,17 +26,19 @@ type session_data = {
     conf_mode: bool;
     changeset: cfg_op list;
     client_app: string;
-    user: string;
     client_pid: int32;
+    client_user: string;
+    client_sudo_user: string;
 }
 
-let make world client_app user pid = {
+let make world client_app sudo_user user pid = {
     proposed_config = world.running_config;
     modified = false;
     conf_mode = false;
     changeset = [];
     client_app = client_app;
-    user = user;
+    client_user = user;
+    client_sudo_user = sudo_user;
     client_pid = pid;
 }
 

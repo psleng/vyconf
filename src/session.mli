@@ -15,13 +15,14 @@ type session_data = {
     conf_mode: bool;
     changeset: cfg_op list;
     client_app: string;
-    user: string;
-    client_pid: int32
+    client_pid: int32;
+    client_user: string;
+    client_sudo_user: string;
 }
 
 exception Session_error of string
 
-val make : world -> string -> string -> int32 -> session_data
+val make : world -> string -> string -> string -> int32 -> session_data
 
 val set_modified : session_data -> session_data
 

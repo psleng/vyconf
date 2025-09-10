@@ -39,6 +39,14 @@ let in_cli_config_session () =
 
 let get_session () =
     let pid = Int32.of_int (Unix.getppid()) in
+    let user =
+        try Sys.getenv "USER"
+        with Not_found -> ""
+    in
+    let sudo_user =
+        try Sys.getenv "SUDO_USER"
+        with Not_found -> ""
+    in
     let socket = "/var/run/vyconfd.sock" in
     let config_format = config_format_of_string "curly" in
     let out_format = output_format_of_string "plain" in
@@ -47,7 +55,7 @@ let get_session () =
     in
     let%lwt resp = session_of_pid client pid in
     match resp with
-    | Error _ -> setup_session client "vyconf_cli" pid
+    | Error _ -> setup_session client "vyconf_cli" sudo_user user pid
     | _ as c -> c |> Lwt.return
 
 let close_session () =
