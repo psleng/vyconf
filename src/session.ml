@@ -3,6 +3,7 @@ module IC = Vyos1x.Internal.Make(CT)
 module CC = Commitd_client.Commit
 module CD = Vyos1x.Config_diff
 module VT = Vyos1x.Vytree
+module VL = Vyos1x.Vylist
 module RT = Vyos1x.Reference_tree
 module D = Directories
 module FP = FilePath
@@ -12,6 +13,7 @@ exception Session_error of string
 type cfg_op =
     | CfgSet of string list * string option * CT.value_behaviour
     | CfgDelete of string list * string	option
+    [@@deriving yojson]
 
 type world = {
     mutable running_config: CT.t;
@@ -20,11 +22,19 @@ type world = {
     dirs: Directories.t
 }
 
+type aux_op = {
+    script_name: string;
+    tag_value: string option;
+    changeset: cfg_op list;
+} [@@deriving yojson]
+
+
 type session_data = {
     proposed_config : CT.t;
     modified: bool;
     conf_mode: bool;
     changeset: cfg_op list;
+    mutable aux_changeset: aux_op list;
     client_app: string;
     client_pid: int32;
     client_user: string;
@@ -36,6 +46,7 @@ let make world client_app sudo_user user pid = {
     modified = false;
     conf_mode = false;
     changeset = [];
+    aux_changeset = [];
     client_app = client_app;
     client_user = user;
     client_sudo_user = sudo_user;
@@ -54,6 +65,10 @@ let string_of_op op =
         (match value with
          | None -> Printf.sprintf "delete %s" path_str
          | Some v -> Printf.sprintf "delete %s \"%s\"" path_str v)
+
+let sprint_changeset ss =
+    let ss = List.map (fun x -> aux_op_to_yojson x) ss in
+    Yojson.Safe.to_string (`List ss)
 
 let set_modified s =
     if s.modified = true then s
@@ -143,6 +158,51 @@ let set w s path =
 let delete w s path =
     let changeset' = update_delete w s.changeset path in
     { s with changeset = changeset' }
+
+let aux_set w s path name tagval =
+    let _ = validate w s path in
+    let aux = s.aux_changeset in
+    let ident y =
+        if (y.script_name <> name || y.tag_value <> tagval) then false
+        else true
+    in
+    let op' = VL.find ident aux in
+    let changeset' =
+    match op' with
+    | None ->
+        update_set w [] path
+    | Some o ->
+        update_set w o.changeset path
+    in
+    let op =
+    { script_name = name; tag_value = tagval; changeset = changeset' }
+    in
+    let aux_changeset' =
+        VL.replace ~force:true ident op aux
+    in
+    s.aux_changeset <- aux_changeset'
+
+let aux_delete w s path name tagval =
+    let aux = s.aux_changeset in
+    let ident y =
+        if (y.script_name <> name || y.tag_value <> tagval) then false
+        else true
+    in
+    let op' = VL.find ident aux in
+    let changeset' =
+    match op' with
+    | None ->
+        update_delete w [] path
+    | Some o ->
+        update_delete w o.changeset path
+    in
+    let op =
+    { script_name = name; tag_value = tagval; changeset = changeset' }
+    in
+    let aux_changeset' =
+        VL.replace ~force:true ident op aux
+    in
+    s.aux_changeset <- aux_changeset'
 
 let discard _w s =
     { s with changeset = []; }

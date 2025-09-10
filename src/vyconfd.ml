@@ -210,6 +210,34 @@ let delete world token (req: request_delete) =
         response_tmpl
     with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
 
+let aux_set world token (req: request_aux_set) =
+    try
+        let () = (Lwt_log.debug @@ Printf.sprintf "[%s]\n" (Vyos1x.Util.string_of_list req.path)) |> Lwt.ignore_result in
+        let () =
+            Session.aux_set
+            world
+            (find_session token)
+            req.path
+            req.script_name
+            req.tag_value
+        in
+        response_tmpl
+    with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
+
+let aux_delete world token (req: request_aux_delete) =
+    try
+        let () = (Lwt_log.debug @@ Printf.sprintf "[%s]\n" (Vyos1x.Util.string_of_list req.path)) |> Lwt.ignore_result in
+        let () =
+            Session.aux_delete
+            world
+            (find_session token)
+            req.path
+            req.script_name
+            req.tag_value
+        in
+        response_tmpl
+    with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
+
 let discard world token (_req: request_discard) =
     try
         let session = Session.discard world (find_session token)
@@ -279,7 +307,8 @@ let commit world token (req: request_commit) =
                         Session.get_changeset
                         world
                         world.Session.running_config
-                        proposed_config }
+                        proposed_config;
+                        aux_changeset = []; }
                 in Hashtbl.replace sessions token session;
 
             let success, msg_str =
@@ -342,6 +371,8 @@ let rec handle_connection world ic oc () =
                     | Some t, Validate r -> validate world t r
                     | Some t, Set r -> set world t r
                     | Some t, Delete r -> delete world t r
+                    | Some t, Aux_set r -> aux_set world t r
+                    | Some t, Aux_delete r -> aux_delete world t r
                     | Some t, Discard r -> discard world t r
                     | Some t, Session_changed r -> session_changed world t r
                     | Some t, Get_config r -> get_config world t r

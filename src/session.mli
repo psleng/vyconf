@@ -9,11 +9,18 @@ type world = {
     dirs: Directories.t
 }
 
+type aux_op = {
+    script_name: string;
+    tag_value: string option;
+    changeset: cfg_op list;
+} [@@deriving yojson]
+
 type session_data = {
     proposed_config : Vyos1x.Config_tree.t;
     modified: bool;
     conf_mode: bool;
     changeset: cfg_op list;
+    mutable aux_changeset: aux_op list;
     client_app: string;
     client_pid: int32;
     client_user: string;
@@ -21,6 +28,8 @@ type session_data = {
 }
 
 exception Session_error of string
+
+val sprint_changeset : aux_op list -> string
 
 val make : world -> string -> string -> string -> int32 -> session_data
 
@@ -33,6 +42,10 @@ val get_changeset : world -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> cfg
 val set : world -> session_data -> string list -> session_data
 
 val delete : world -> session_data -> string list -> session_data
+
+val aux_set : world -> session_data -> string list -> string -> string option -> unit
+
+val aux_delete : world -> session_data -> string list -> string -> string option -> unit
 
 val get_proposed_config : world -> session_data -> Vyos1x.Config_tree.t
 

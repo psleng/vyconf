@@ -54,6 +54,18 @@ type request_delete = {
   path : string list;
 }
 
+type request_aux_set = {
+  path : string list;
+  script_name : string;
+  tag_value : string option;
+}
+
+type request_aux_delete = {
+  path : string list;
+  script_name : string;
+  tag_value : string option;
+}
+
 type request_discard = {
   dummy : int32 option;
 }
@@ -179,6 +191,8 @@ type request =
   | Session_of_pid of request_session_of_pid
   | Session_exists of request_session_exists
   | Get_config of request_get_config
+  | Aux_set of request_aux_set
+  | Aux_delete of request_aux_delete
 
 type request_envelope = {
   token : string option;
@@ -268,6 +282,22 @@ val default_request_delete :
   unit ->
   request_delete
 (** [default_request_delete ()] is the default value for type [request_delete] *)
+
+val default_request_aux_set : 
+  ?path:string list ->
+  ?script_name:string ->
+  ?tag_value:string option ->
+  unit ->
+  request_aux_set
+(** [default_request_aux_set ()] is the default value for type [request_aux_set] *)
+
+val default_request_aux_delete : 
+  ?path:string list ->
+  ?script_name:string ->
+  ?tag_value:string option ->
+  unit ->
+  request_aux_delete
+(** [default_request_aux_delete ()] is the default value for type [request_aux_delete] *)
 
 val default_request_discard : 
   ?dummy:int32 option ->
@@ -460,6 +490,12 @@ val pp_request_set : Format.formatter -> request_set -> unit
 val pp_request_delete : Format.formatter -> request_delete -> unit 
 (** [pp_request_delete v] formats v *)
 
+val pp_request_aux_set : Format.formatter -> request_aux_set -> unit 
+(** [pp_request_aux_set v] formats v *)
+
+val pp_request_aux_delete : Format.formatter -> request_aux_delete -> unit 
+(** [pp_request_aux_delete v] formats v *)
+
 val pp_request_discard : Format.formatter -> request_discard -> unit 
 (** [pp_request_discard v] formats v *)
 
@@ -568,6 +604,12 @@ val encode_pb_request_set : request_set -> Pbrt.Encoder.t -> unit
 val encode_pb_request_delete : request_delete -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_delete v encoder] encodes [v] with the given [encoder] *)
 
+val encode_pb_request_aux_set : request_aux_set -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_aux_set v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_aux_delete : request_aux_delete -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_aux_delete v encoder] encodes [v] with the given [encoder] *)
+
 val encode_pb_request_discard : request_discard -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_discard v encoder] encodes [v] with the given [encoder] *)
 
@@ -675,6 +717,12 @@ val decode_pb_request_set : Pbrt.Decoder.t -> request_set
 
 val decode_pb_request_delete : Pbrt.Decoder.t -> request_delete
 (** [decode_pb_request_delete decoder] decodes a [request_delete] binary value from [decoder] *)
+
+val decode_pb_request_aux_set : Pbrt.Decoder.t -> request_aux_set
+(** [decode_pb_request_aux_set decoder] decodes a [request_aux_set] binary value from [decoder] *)
+
+val decode_pb_request_aux_delete : Pbrt.Decoder.t -> request_aux_delete
+(** [decode_pb_request_aux_delete decoder] decodes a [request_aux_delete] binary value from [decoder] *)
 
 val decode_pb_request_discard : Pbrt.Decoder.t -> request_discard
 (** [decode_pb_request_discard decoder] decodes a [request_discard] binary value from [decoder] *)
