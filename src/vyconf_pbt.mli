@@ -62,14 +62,14 @@ type request_session_changed = {
 
 type request_rename = {
   edit_level : string list;
-  from : string;
-  to_ : string;
+  source : string;
+  destination : string;
 }
 
 type request_copy = {
   edit_level : string list;
-  from : string;
-  to_ : string;
+  source : string;
+  destination : string;
 }
 
 type request_comment = {
@@ -279,16 +279,16 @@ val default_request_session_changed :
 
 val default_request_rename : 
   ?edit_level:string list ->
-  ?from:string ->
-  ?to_:string ->
+  ?source:string ->
+  ?destination:string ->
   unit ->
   request_rename
 (** [default_request_rename ()] is the default value for type [request_rename] *)
 
 val default_request_copy : 
   ?edit_level:string list ->
-  ?from:string ->
-  ?to_:string ->
+  ?source:string ->
+  ?destination:string ->
   unit ->
   request_copy
 (** [default_request_copy ()] is the default value for type [request_copy] *)

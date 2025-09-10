@@ -13,17 +13,17 @@ message Request {
   }
 
   message SetupSession {
-    required int32 ClientPid = 1;
-    optional string ClientApplication = 2;
-    optional int32 OnBehalfOf = 3;
+    required int32 client_pid = 1;
+    optional string client_application = 2;
+    optional int32 on_behalf_of = 3;
   }
 
   message SessionOfPid {
-    required int32 ClientPid = 1;
+    required int32 client_pid = 1;
   }
 
   message SessionUpdatePid {
-    required int32 ClientPid = 1;
+    required int32 client_pid = 1;
   }
 
   message GetConfig {
@@ -31,7 +31,7 @@ message Request {
   }
 
   message Teardown {
-    optional int32 OnBehalfOf = 1;
+    optional int32 on_behalf_of = 1;
   }
 
   message Validate {
@@ -40,11 +40,11 @@ message Request {
   }
 
   message Set {
-    repeated string Path = 1;
+    repeated string path = 1;
   }
 
   message Delete {
-    repeated string Path = 1;
+    repeated string path = 1;
   }
 
   message Discard {
@@ -56,76 +56,76 @@ message Request {
   }
 
   message Rename {
-    repeated string EditLevel = 1;
-    required string From = 2;
-    required string To = 3;
+    repeated string edit_level = 1;
+    required string source = 2;
+    required string destination = 3;
   }
 
   message Copy {
-    repeated string EditLevel = 1;
-    required string From = 2;
-    required string To = 3;
+    repeated string edit_level = 1;
+    required string source = 2;
+    required string destination = 3;
   }
 
   message Comment {
-    repeated string Path = 1;
-    required string Comment = 2;
+    repeated string path = 1;
+    required string comment = 2;
   }
 
   message Commit {
-    optional bool Confirm = 1;
-    optional int32 ConfirmTimeout = 2;
-    optional string Comment = 3;
-    optional bool DryRun = 4;
+    optional bool confirm = 1;
+    optional int32 confirm_timeout = 2;
+    optional string comment = 3;
+    optional bool dry_run = 4;
   }
 
   message Rollback {
-    required int32 Revision = 1;
+    required int32 revision = 1;
   }
 
   message Load {
-    required string Location = 1;
+    required string location = 1;
     required bool cached = 2;
     optional ConfigFormat format = 3;
   }
 
   message Merge {
-    required string Location = 1;
+    required string location = 1;
     required bool destructive = 2;
     optional ConfigFormat format = 3;
   }
 
   message Save {
-    required string Location = 1;
+    required string location = 1;
     optional ConfigFormat format = 2;
   }
 
   message ShowConfig {
-    repeated string Path = 1;
+    repeated string path = 1;
     optional ConfigFormat format = 2;
   }
 
   message Exists {
-    repeated string Path = 1;
+    repeated string path = 1;
   }
 
   message GetValue {
-    repeated string Path = 1;
+    repeated string path = 1;
     optional OutputFormat output_format = 2;
   }
 
   message GetValues {
-    repeated string Path = 1;
+    repeated string path = 1;
     optional OutputFormat output_format = 2;
   }
 
   message ListChildren {
-    repeated string Path = 1;
+    repeated string path = 1;
     optional OutputFormat output_format = 2;
   }
 
   message RunOpMode {
-    repeated string Path = 1;
+    repeated string path = 1;
     optional OutputFormat output_format = 2;
   }
 
@@ -133,8 +133,8 @@ message Request {
   }
 
   message EnterConfigurationMode {
-    required bool Exclusive = 1;
-    required bool OverrideExclusive = 2;
+    required bool exclusive = 1;
+    required bool override_exclusive = 2;
   }
 
   message ExitConfigurationMode {
@@ -143,7 +143,7 @@ message Request {
   message ReloadReftree {
     // this is a temporary workaround for a bug with empty messages, and
     // will be removed when the issue is resolved
-    optional int32 OnBehalfOf = 1;
+    optional int32 on_behalf_of = 1;
   }
 
 
