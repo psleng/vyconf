@@ -245,8 +245,15 @@ let commit world token (req: request_commit) =
     let s = find_session token in
     let proposed_config = Session.get_proposed_config world s in
     let req_dry_run = Option.value req.dry_run ~default:false in
-
-    let commit_data = Session.prepare_commit ~dry_run:req_dry_run world proposed_config token
+    let commit_data =
+        Session.prepare_commit
+        ~dry_run:req_dry_run
+        world
+        proposed_config
+        token
+        s.client_pid
+        s.client_sudo_user
+        s.client_user
     in
     let%lwt received_commit_data = VC.do_commit commit_data in
     let%lwt result_commit_data =

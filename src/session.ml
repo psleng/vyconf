@@ -191,7 +191,7 @@ let save w s file =
     | Error e -> raise (Session_error (Printf.sprintf "Error saving config: %s" e))
     | Ok () -> s
 
-let prepare_commit ?(dry_run=false) w config id =
+let prepare_commit ?(dry_run=false) w config id pid sudo_user user =
     let at = w.running_config in
     let rt = w.reference_tree in
     let vc = w.vyconf_config in
@@ -207,7 +207,7 @@ let prepare_commit ?(dry_run=false) w config id =
         with
             Vyos1x.Internal.Write_error msg -> raise (Session_error msg)
     in
-    CC.make_commit_data ~dry_run:dry_run rt at config id
+    CC.make_commit_data ~dry_run:dry_run rt at config id pid sudo_user user
 
 let get_config w s id =
     let at = w.running_config in

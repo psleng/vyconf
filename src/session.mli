@@ -56,7 +56,7 @@ val list_children : world -> session_data -> string list -> string list
 
 val string_of_op : cfg_op -> string
 
-val prepare_commit : ?dry_run:bool -> world -> Vyos1x.Config_tree.t -> string -> Commitd_client.Commit.commit_data
+val prepare_commit : ?dry_run:bool -> world -> Vyos1x.Config_tree.t -> string -> int32 -> string -> string -> Commitd_client.Commit.commit_data
 
 val get_config : world -> session_data -> string -> string
 

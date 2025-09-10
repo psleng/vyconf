@@ -17,6 +17,9 @@ type node_data = {
 
 type commit_data = {
     session_id: string;
+    session_pid: int32;
+    sudo_user: string;
+    user: string;
     dry_run: bool;
     atomic: bool;
     background: bool;
@@ -33,9 +36,7 @@ val tree_source_to_yojson : tree_source -> [> `String of string ]
 
 val default_node_data : node_data
 
-val default_commit_data : commit_data
-
-val make_commit_data : ?dry_run:bool -> Vyos1x.Reference_tree.t -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> string -> commit_data
+val make_commit_data : ?dry_run:bool -> Vyos1x.Reference_tree.t -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> string -> int32 -> string -> string -> commit_data
 
 val calculate_priority_lists : Vyos1x.Reference_tree.t -> Vyos1x.Config_tree.t -> node_data list * node_data list
 
