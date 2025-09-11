@@ -295,21 +295,27 @@ let commit world token (req: request_commit) =
         let res, out =
             init_data.success, init_data.out
         in
+        let () =
+            (Lwt_log.debug @@ Printf.sprintf "aux_changeset: %s" (Session.sprint_changeset s.aux_changeset)) |> Lwt.ignore_result
+        in
         match res with
         | false ->
             Lwt.return {response_tmpl with status=Internal_error; error=(Some out)}
         | true ->
-            (* partial commit *)
             if not req_dry_run then
-                world.Session.running_config <- result_commit_data.config_result;
+                let post_running, post_proposed =
+                    Session.post_process_commit world s (result_commit_data, proposed_config)
+                in
+                world.Session.running_config <- post_running;
                 let session =
                     { s with changeset =
                         Session.get_changeset
                         world
                         world.Session.running_config
-                        proposed_config;
+                        post_proposed;
                         aux_changeset = []; }
-                in Hashtbl.replace sessions token session;
+                in Hashtbl.replace sessions token session
+            else ();
 
             let success, msg_str =
                 result_commit_data.result.success, result_commit_data.result.out

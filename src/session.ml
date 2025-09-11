@@ -269,6 +269,32 @@ let prepare_commit ?(dry_run=false) w config id pid sudo_user user =
     in
     CC.make_commit_data ~dry_run:dry_run rt at config id pid sudo_user user
 
+let post_process_commit w s ((c_data: CC.commit_data), proposed_config) =
+    let ident n v y =
+        if (y.script_name <> n || y.tag_value <> v) then false
+        else true
+    in
+    let func (running, proposed) (n_data: CC.node_data) =
+        match n_data.reply with
+        | None -> (running, proposed)
+        | Some reply ->
+            match reply.success with
+            | false -> (running, proposed)
+            | true ->
+                begin
+                let post =
+                    VL.find
+                    (ident n_data.script_name n_data.tag_value)
+                    s.aux_changeset
+                in
+                match post with
+                | None -> (running, proposed)
+                | Some p ->
+                    (apply_changes w p.changeset running, apply_changes w p.changeset proposed)
+                end
+    in
+    List.fold_left func (c_data.config_result, proposed_config) c_data.node_list
+
 let get_config w s id =
     let at = w.running_config in
     let wt = get_proposed_config w s in
