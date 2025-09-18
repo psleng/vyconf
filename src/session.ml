@@ -3,6 +3,7 @@ module IC = Vyos1x.Internal.Make(CT)
 module CC = Commitd_client.Commit
 module CD = Vyos1x.Config_diff
 module VT = Vyos1x.Vytree
+module VL = Vyos1x.Vylist
 module RT = Vyos1x.Reference_tree
 module D = Directories
 module FP = FilePath
@@ -12,6 +13,7 @@ exception Session_error of string
 type cfg_op =
     | CfgSet of string list * string option * CT.value_behaviour
     | CfgDelete of string list * string	option
+    [@@deriving yojson]
 
 type world = {
     mutable running_config: CT.t;
@@ -20,23 +22,34 @@ type world = {
     dirs: Directories.t
 }
 
+type aux_op = {
+    script_name: string;
+    tag_value: string option;
+    changeset: cfg_op list;
+} [@@deriving yojson]
+
+
 type session_data = {
     proposed_config : CT.t;
     modified: bool;
     conf_mode: bool;
     changeset: cfg_op list;
+    mutable aux_changeset: aux_op list;
     client_app: string;
-    user: string;
     client_pid: int32;
+    client_user: string;
+    client_sudo_user: string;
 }
 
-let make world client_app user pid = {
+let make world client_app sudo_user user pid = {
     proposed_config = world.running_config;
     modified = false;
     conf_mode = false;
     changeset = [];
+    aux_changeset = [];
     client_app = client_app;
-    user = user;
+    client_user = user;
+    client_sudo_user = sudo_user;
     client_pid = pid;
 }
 
@@ -52,6 +65,10 @@ let string_of_op op =
         (match value with
          | None -> Printf.sprintf "delete %s" path_str
          | Some v -> Printf.sprintf "delete %s \"%s\"" path_str v)
+
+let sprint_changeset ss =
+    let ss = List.map (fun x -> aux_op_to_yojson x) ss in
+    Yojson.Safe.to_string (`List ss)
 
 let set_modified s =
     if s.modified = true then s
@@ -142,6 +159,51 @@ let delete w s path =
     let changeset' = update_delete w s.changeset path in
     { s with changeset = changeset' }
 
+let aux_set w s path name tagval =
+    let _ = validate w s path in
+    let aux = s.aux_changeset in
+    let ident y =
+        if (y.script_name <> name || y.tag_value <> tagval) then false
+        else true
+    in
+    let op' = VL.find ident aux in
+    let changeset' =
+    match op' with
+    | None ->
+        update_set w [] path
+    | Some o ->
+        update_set w o.changeset path
+    in
+    let op =
+    { script_name = name; tag_value = tagval; changeset = changeset' }
+    in
+    let aux_changeset' =
+        VL.replace ~force:true ident op aux
+    in
+    s.aux_changeset <- aux_changeset'
+
+let aux_delete w s path name tagval =
+    let aux = s.aux_changeset in
+    let ident y =
+        if (y.script_name <> name || y.tag_value <> tagval) then false
+        else true
+    in
+    let op' = VL.find ident aux in
+    let changeset' =
+    match op' with
+    | None ->
+        update_delete w [] path
+    | Some o ->
+        update_delete w o.changeset path
+    in
+    let op =
+    { script_name = name; tag_value = tagval; changeset = changeset' }
+    in
+    let aux_changeset' =
+        VL.replace ~force:true ident op aux
+    in
+    s.aux_changeset <- aux_changeset'
+
 let discard _w s =
     { s with changeset = []; }
 
@@ -189,7 +251,7 @@ let save w s file =
     | Error e -> raise (Session_error (Printf.sprintf "Error saving config: %s" e))
     | Ok () -> s
 
-let prepare_commit ?(dry_run=false) w config id =
+let prepare_commit ?(dry_run=false) w config id pid sudo_user user =
     let at = w.running_config in
     let rt = w.reference_tree in
     let vc = w.vyconf_config in
@@ -205,7 +267,33 @@ let prepare_commit ?(dry_run=false) w config id =
         with
             Vyos1x.Internal.Write_error msg -> raise (Session_error msg)
     in
-    CC.make_commit_data ~dry_run:dry_run rt at config id
+    CC.make_commit_data ~dry_run:dry_run rt at config id pid sudo_user user
+
+let post_process_commit w s ((c_data: CC.commit_data), proposed_config) =
+    let ident n v y =
+        if (y.script_name <> n || y.tag_value <> v) then false
+        else true
+    in
+    let func (running, proposed) (n_data: CC.node_data) =
+        match n_data.reply with
+        | None -> (running, proposed)
+        | Some reply ->
+            match reply.success with
+            | false -> (running, proposed)
+            | true ->
+                begin
+                let post =
+                    VL.find
+                    (ident n_data.script_name n_data.tag_value)
+                    s.aux_changeset
+                in
+                match post with
+                | None -> (running, proposed)
+                | Some p ->
+                    (apply_changes w p.changeset running, apply_changes w p.changeset proposed)
+                end
+    in
+    List.fold_left func (c_data.config_result, proposed_config) c_data.node_list
 
 let get_config w s id =
     let at = w.running_config in

@@ -9,19 +9,29 @@ type world = {
     dirs: Directories.t
 }
 
+type aux_op = {
+    script_name: string;
+    tag_value: string option;
+    changeset: cfg_op list;
+} [@@deriving yojson]
+
 type session_data = {
     proposed_config : Vyos1x.Config_tree.t;
     modified: bool;
     conf_mode: bool;
     changeset: cfg_op list;
+    mutable aux_changeset: aux_op list;
     client_app: string;
-    user: string;
-    client_pid: int32
+    client_pid: int32;
+    client_user: string;
+    client_sudo_user: string;
 }
 
 exception Session_error of string
 
-val make : world -> string -> string -> int32 -> session_data
+val sprint_changeset : aux_op list -> string
+
+val make : world -> string -> string -> string -> int32 -> session_data
 
 val set_modified : session_data -> session_data
 
@@ -32,6 +42,10 @@ val get_changeset : world -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> cfg
 val set : world -> session_data -> string list -> session_data
 
 val delete : world -> session_data -> string list -> session_data
+
+val aux_set : world -> session_data -> string list -> string -> string option -> unit
+
+val aux_delete : world -> session_data -> string list -> string -> string option -> unit
 
 val get_proposed_config : world -> session_data -> Vyos1x.Config_tree.t
 
@@ -55,7 +69,9 @@ val list_children : world -> session_data -> string list -> string list
 
 val string_of_op : cfg_op -> string
 
-val prepare_commit : ?dry_run:bool -> world -> Vyos1x.Config_tree.t -> string -> Commitd_client.Commit.commit_data
+val prepare_commit : ?dry_run:bool -> world -> Vyos1x.Config_tree.t -> string -> int32 -> string -> string -> Commitd_client.Commit.commit_data
+
+val post_process_commit : world -> session_data -> Commitd_client.Commit.commit_data * Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t * Vyos1x.Config_tree.t
 
 val get_config : world -> session_data -> string -> string
 

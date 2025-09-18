@@ -14,14 +14,16 @@ type request_setup_session = {
   client_pid : int32;
   client_application : string option;
   on_behalf_of : int32 option;
+  client_user : string option;
+  client_sudo_user : string option;
 }
 
 type request_session_of_pid = {
   client_pid : int32;
 }
 
-type request_session_update_pid = {
-  client_pid : int32;
+type request_session_exists = {
+  dummy : int32 option;
 }
 
 type request_get_config = {
@@ -45,6 +47,18 @@ type request_delete = {
   path : string list;
 }
 
+type request_aux_set = {
+  path : string list;
+  script_name : string;
+  tag_value : string option;
+}
+
+type request_aux_delete = {
+  path : string list;
+  script_name : string;
+  tag_value : string option;
+}
+
 type request_discard = {
   dummy : int32 option;
 }
@@ -55,14 +69,14 @@ type request_session_changed = {
 
 type request_rename = {
   edit_level : string list;
-  from : string;
-  to_ : string;
+  source : string;
+  destination : string;
 }
 
 type request_copy = {
   edit_level : string list;
-  from : string;
-  to_ : string;
+  source : string;
+  destination : string;
 }
 
 type request_comment = {
@@ -168,8 +182,10 @@ type request =
   | Discard of request_discard
   | Session_changed of request_session_changed
   | Session_of_pid of request_session_of_pid
-  | Session_update_pid of request_session_update_pid
+  | Session_exists of request_session_exists
   | Get_config of request_get_config
+  | Aux_set of request_aux_set
+  | Aux_delete of request_aux_delete
 
 type request_envelope = {
   token : string option;
@@ -205,10 +221,14 @@ let rec default_request_setup_session
   ?client_pid:((client_pid:int32) = 0l)
   ?client_application:((client_application:string option) = None)
   ?on_behalf_of:((on_behalf_of:int32 option) = None)
+  ?client_user:((client_user:string option) = None)
+  ?client_sudo_user:((client_sudo_user:string option) = None)
   () : request_setup_session  = {
   client_pid;
   client_application;
   on_behalf_of;
+  client_user;
+  client_sudo_user;
 }
 
 let rec default_request_session_of_pid 
@@ -217,10 +237,10 @@ let rec default_request_session_of_pid
   client_pid;
 }
 
-let rec default_request_session_update_pid 
-  ?client_pid:((client_pid:int32) = 0l)
-  () : request_session_update_pid  = {
-  client_pid;
+let rec default_request_session_exists 
+  ?dummy:((dummy:int32 option) = None)
+  () : request_session_exists  = {
+  dummy;
 }
 
 let rec default_request_get_config 
@@ -255,6 +275,26 @@ let rec default_request_delete
   path;
 }
 
+let rec default_request_aux_set 
+  ?path:((path:string list) = [])
+  ?script_name:((script_name:string) = "")
+  ?tag_value:((tag_value:string option) = None)
+  () : request_aux_set  = {
+  path;
+  script_name;
+  tag_value;
+}
+
+let rec default_request_aux_delete 
+  ?path:((path:string list) = [])
+  ?script_name:((script_name:string) = "")
+  ?tag_value:((tag_value:string option) = None)
+  () : request_aux_delete  = {
+  path;
+  script_name;
+  tag_value;
+}
+
 let rec default_request_discard 
   ?dummy:((dummy:int32 option) = None)
   () : request_discard  = {
@@ -269,22 +309,22 @@ let rec default_request_session_changed
 
 let rec default_request_rename 
   ?edit_level:((edit_level:string list) = [])
-  ?from:((from:string) = "")
-  ?to_:((to_:string) = "")
+  ?source:((source:string) = "")
+  ?destination:((destination:string) = "")
   () : request_rename  = {
   edit_level;
-  from;
-  to_;
+  source;
+  destination;
 }
 
 let rec default_request_copy 
   ?edit_level:((edit_level:string list) = [])
-  ?from:((from:string) = "")
-  ?to_:((to_:string) = "")
+  ?source:((source:string) = "")
+  ?destination:((destination:string) = "")
   () : request_copy  = {
   edit_level;
-  from;
-  to_;
+  source;
+  destination;
 }
 
 let rec default_request_comment 
@@ -433,12 +473,16 @@ type request_setup_session_mutable = {
   mutable client_pid : int32;
   mutable client_application : string option;
   mutable on_behalf_of : int32 option;
+  mutable client_user : string option;
+  mutable client_sudo_user : string option;
 }
 
 let default_request_setup_session_mutable () : request_setup_session_mutable = {
   client_pid = 0l;
   client_application = None;
   on_behalf_of = None;
+  client_user = None;
+  client_sudo_user = None;
 }
 
 type request_session_of_pid_mutable = {
@@ -449,12 +493,12 @@ let default_request_session_of_pid_mutable () : request_session_of_pid_mutable =
   client_pid = 0l;
 }
 
-type request_session_update_pid_mutable = {
-  mutable client_pid : int32;
+type request_session_exists_mutable = {
+  mutable dummy : int32 option;
 }
 
-let default_request_session_update_pid_mutable () : request_session_update_pid_mutable = {
-  client_pid = 0l;
+let default_request_session_exists_mutable () : request_session_exists_mutable = {
+  dummy = None;
 }
 
 type request_get_config_mutable = {
@@ -499,6 +543,30 @@ let default_request_delete_mutable () : request_delete_mutable = {
   path = [];
 }
 
+type request_aux_set_mutable = {
+  mutable path : string list;
+  mutable script_name : string;
+  mutable tag_value : string option;
+}
+
+let default_request_aux_set_mutable () : request_aux_set_mutable = {
+  path = [];
+  script_name = "";
+  tag_value = None;
+}
+
+type request_aux_delete_mutable = {
+  mutable path : string list;
+  mutable script_name : string;
+  mutable tag_value : string option;
+}
+
+let default_request_aux_delete_mutable () : request_aux_delete_mutable = {
+  path = [];
+  script_name = "";
+  tag_value = None;
+}
+
 type request_discard_mutable = {
   mutable dummy : int32 option;
 }
@@ -517,26 +585,26 @@ let default_request_session_changed_mutable () : request_session_changed_mutable
 
 type request_rename_mutable = {
   mutable edit_level : string list;
-  mutable from : string;
-  mutable to_ : string;
+  mutable source : string;
+  mutable destination : string;
 }
 
 let default_request_rename_mutable () : request_rename_mutable = {
   edit_level = [];
-  from = "";
-  to_ = "";
+  source = "";
+  destination = "";
 }
 
 type request_copy_mutable = {
   mutable edit_level : string list;
-  mutable from : string;
-  mutable to_ : string;
+  mutable source : string;
+  mutable destination : string;
 }
 
 let default_request_copy_mutable () : request_copy_mutable = {
   edit_level = [];
-  from = "";
-  to_ = "";
+  source = "";
+  destination = "";
 }
 
 type request_comment_mutable = {
@@ -730,6 +798,8 @@ let rec pp_request_setup_session fmt (v:request_setup_session) =
     Pbrt.Pp.pp_record_field ~first:true "client_pid" Pbrt.Pp.pp_int32 fmt v.client_pid;
     Pbrt.Pp.pp_record_field ~first:false "client_application" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.client_application;
     Pbrt.Pp.pp_record_field ~first:false "on_behalf_of" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.on_behalf_of;
+    Pbrt.Pp.pp_record_field ~first:false "client_user" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.client_user;
+    Pbrt.Pp.pp_record_field ~first:false "client_sudo_user" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.client_sudo_user;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
@@ -739,9 +809,9 @@ let rec pp_request_session_of_pid fmt (v:request_session_of_pid) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
-let rec pp_request_session_update_pid fmt (v:request_session_update_pid) = 
+let rec pp_request_session_exists fmt (v:request_session_exists) = 
   let pp_i fmt () =
-    Pbrt.Pp.pp_record_field ~first:true "client_pid" Pbrt.Pp.pp_int32 fmt v.client_pid;
+    Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
@@ -776,6 +846,22 @@ let rec pp_request_delete fmt (v:request_delete) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
+let rec pp_request_aux_set fmt (v:request_aux_set) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "path" (Pbrt.Pp.pp_list Pbrt.Pp.pp_string) fmt v.path;
+    Pbrt.Pp.pp_record_field ~first:false "script_name" Pbrt.Pp.pp_string fmt v.script_name;
+    Pbrt.Pp.pp_record_field ~first:false "tag_value" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.tag_value;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_aux_delete fmt (v:request_aux_delete) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "path" (Pbrt.Pp.pp_list Pbrt.Pp.pp_string) fmt v.path;
+    Pbrt.Pp.pp_record_field ~first:false "script_name" Pbrt.Pp.pp_string fmt v.script_name;
+    Pbrt.Pp.pp_record_field ~first:false "tag_value" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.tag_value;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
 let rec pp_request_discard fmt (v:request_discard) = 
   let pp_i fmt () =
     Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
@@ -791,16 +877,16 @@ let rec pp_request_session_changed fmt (v:request_session_changed) =
 let rec pp_request_rename fmt (v:request_rename) = 
   let pp_i fmt () =
     Pbrt.Pp.pp_record_field ~first:true "edit_level" (Pbrt.Pp.pp_list Pbrt.Pp.pp_string) fmt v.edit_level;
-    Pbrt.Pp.pp_record_field ~first:false "from" Pbrt.Pp.pp_string fmt v.from;
-    Pbrt.Pp.pp_record_field ~first:false "to_" Pbrt.Pp.pp_string fmt v.to_;
+    Pbrt.Pp.pp_record_field ~first:false "source" Pbrt.Pp.pp_string fmt v.source;
+    Pbrt.Pp.pp_record_field ~first:false "destination" Pbrt.Pp.pp_string fmt v.destination;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
 let rec pp_request_copy fmt (v:request_copy) = 
   let pp_i fmt () =
     Pbrt.Pp.pp_record_field ~first:true "edit_level" (Pbrt.Pp.pp_list Pbrt.Pp.pp_string) fmt v.edit_level;
-    Pbrt.Pp.pp_record_field ~first:false "from" Pbrt.Pp.pp_string fmt v.from;
-    Pbrt.Pp.pp_record_field ~first:false "to_" Pbrt.Pp.pp_string fmt v.to_;
+    Pbrt.Pp.pp_record_field ~first:false "source" Pbrt.Pp.pp_string fmt v.source;
+    Pbrt.Pp.pp_record_field ~first:false "destination" Pbrt.Pp.pp_string fmt v.destination;
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
@@ -944,8 +1030,10 @@ let rec pp_request fmt (v:request) =
   | Discard x -> Format.fprintf fmt "@[<hv2>Discard(@,%a)@]" pp_request_discard x
   | Session_changed x -> Format.fprintf fmt "@[<hv2>Session_changed(@,%a)@]" pp_request_session_changed x
   | Session_of_pid x -> Format.fprintf fmt "@[<hv2>Session_of_pid(@,%a)@]" pp_request_session_of_pid x
-  | Session_update_pid x -> Format.fprintf fmt "@[<hv2>Session_update_pid(@,%a)@]" pp_request_session_update_pid x
+  | Session_exists x -> Format.fprintf fmt "@[<hv2>Session_exists(@,%a)@]" pp_request_session_exists x
   | Get_config x -> Format.fprintf fmt "@[<hv2>Get_config(@,%a)@]" pp_request_get_config x
+  | Aux_set x -> Format.fprintf fmt "@[<hv2>Aux_set(@,%a)@]" pp_request_aux_set x
+  | Aux_delete x -> Format.fprintf fmt "@[<hv2>Aux_delete(@,%a)@]" pp_request_aux_delete x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
   let pp_i fmt () =
@@ -1008,6 +1096,18 @@ let rec encode_pb_request_setup_session (v:request_setup_session) encoder =
     Pbrt.Encoder.key 3 Pbrt.Varint encoder; 
   | None -> ();
   end;
+  begin match v.client_user with
+  | Some x -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 4 Pbrt.Bytes encoder; 
+  | None -> ();
+  end;
+  begin match v.client_sudo_user with
+  | Some x -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 5 Pbrt.Bytes encoder; 
+  | None -> ();
+  end;
   ()
 
 let rec encode_pb_request_session_of_pid (v:request_session_of_pid) encoder = 
@@ -1015,9 +1115,13 @@ let rec encode_pb_request_session_of_pid (v:request_session_of_pid) encoder =
   Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
   ()
 
-let rec encode_pb_request_session_update_pid (v:request_session_update_pid) encoder = 
-  Pbrt.Encoder.int32_as_varint v.client_pid encoder;
-  Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+let rec encode_pb_request_session_exists (v:request_session_exists) encoder = 
+  begin match v.dummy with
+  | Some x -> 
+    Pbrt.Encoder.int32_as_varint x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  | None -> ();
+  end;
   ()
 
 let rec encode_pb_request_get_config (v:request_get_config) encoder = 
@@ -1065,6 +1169,36 @@ let rec encode_pb_request_delete (v:request_delete) encoder =
   ) v.path encoder;
   ()
 
+let rec encode_pb_request_aux_set (v:request_aux_set) encoder = 
+  Pbrt.List_util.rev_iter_with (fun x encoder -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  ) v.path encoder;
+  Pbrt.Encoder.string v.script_name encoder;
+  Pbrt.Encoder.key 2 Pbrt.Bytes encoder; 
+  begin match v.tag_value with
+  | Some x -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 3 Pbrt.Bytes encoder; 
+  | None -> ();
+  end;
+  ()
+
+let rec encode_pb_request_aux_delete (v:request_aux_delete) encoder = 
+  Pbrt.List_util.rev_iter_with (fun x encoder -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  ) v.path encoder;
+  Pbrt.Encoder.string v.script_name encoder;
+  Pbrt.Encoder.key 2 Pbrt.Bytes encoder; 
+  begin match v.tag_value with
+  | Some x -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 3 Pbrt.Bytes encoder; 
+  | None -> ();
+  end;
+  ()
+
 let rec encode_pb_request_discard (v:request_discard) encoder = 
   begin match v.dummy with
   | Some x -> 
@@ -1088,9 +1222,9 @@ let rec encode_pb_request_rename (v:request_rename) encoder =
     Pbrt.Encoder.string x encoder;
     Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
   ) v.edit_level encoder;
-  Pbrt.Encoder.string v.from encoder;
+  Pbrt.Encoder.string v.source encoder;
   Pbrt.Encoder.key 2 Pbrt.Bytes encoder; 
-  Pbrt.Encoder.string v.to_ encoder;
+  Pbrt.Encoder.string v.destination encoder;
   Pbrt.Encoder.key 3 Pbrt.Bytes encoder; 
   ()
 
@@ -1099,9 +1233,9 @@ let rec encode_pb_request_copy (v:request_copy) encoder =
     Pbrt.Encoder.string x encoder;
     Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
   ) v.edit_level encoder;
-  Pbrt.Encoder.string v.from encoder;
+  Pbrt.Encoder.string v.source encoder;
   Pbrt.Encoder.key 2 Pbrt.Bytes encoder; 
-  Pbrt.Encoder.string v.to_ encoder;
+  Pbrt.Encoder.string v.destination encoder;
   Pbrt.Encoder.key 3 Pbrt.Bytes encoder; 
   ()
 
@@ -1360,12 +1494,18 @@ let rec encode_pb_request (v:request) encoder =
   | Session_of_pid x ->
     Pbrt.Encoder.nested encode_pb_request_session_of_pid x encoder;
     Pbrt.Encoder.key 27 Pbrt.Bytes encoder; 
-  | Session_update_pid x ->
-    Pbrt.Encoder.nested encode_pb_request_session_update_pid x encoder;
+  | Session_exists x ->
+    Pbrt.Encoder.nested encode_pb_request_session_exists x encoder;
     Pbrt.Encoder.key 28 Pbrt.Bytes encoder; 
   | Get_config x ->
     Pbrt.Encoder.nested encode_pb_request_get_config x encoder;
     Pbrt.Encoder.key 29 Pbrt.Bytes encoder; 
+  | Aux_set x ->
+    Pbrt.Encoder.nested encode_pb_request_aux_set x encoder;
+    Pbrt.Encoder.key 30 Pbrt.Bytes encoder; 
+  | Aux_delete x ->
+    Pbrt.Encoder.nested encode_pb_request_aux_delete x encoder;
+    Pbrt.Encoder.key 31 Pbrt.Bytes encoder; 
   end
 
 let rec encode_pb_request_envelope (v:request_envelope) encoder = 
@@ -1460,6 +1600,16 @@ let rec decode_pb_request_setup_session d =
     end
     | Some (3, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(3)" pk
+    | Some (4, Pbrt.Bytes) -> begin
+      v.client_user <- Some (Pbrt.Decoder.string d);
+    end
+    | Some (4, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(4)" pk
+    | Some (5, Pbrt.Bytes) -> begin
+      v.client_sudo_user <- Some (Pbrt.Decoder.string d);
+    end
+    | Some (5, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_setup_session), field(5)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
   begin if not !client_pid_is_set then Pbrt.Decoder.missing_field "client_pid" end;
@@ -1467,6 +1617,8 @@ let rec decode_pb_request_setup_session d =
     client_pid = v.client_pid;
     client_application = v.client_application;
     on_behalf_of = v.on_behalf_of;
+    client_user = v.client_user;
+    client_sudo_user = v.client_sudo_user;
   } : request_setup_session)
 
 let rec decode_pb_request_session_of_pid d =
@@ -1489,25 +1641,23 @@ let rec decode_pb_request_session_of_pid d =
     client_pid = v.client_pid;
   } : request_session_of_pid)
 
-let rec decode_pb_request_session_update_pid d =
-  let v = default_request_session_update_pid_mutable () in
+let rec decode_pb_request_session_exists d =
+  let v = default_request_session_exists_mutable () in
   let continue__= ref true in
-  let client_pid_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
     ); continue__ := false
     | Some (1, Pbrt.Varint) -> begin
-      v.client_pid <- Pbrt.Decoder.int32_as_varint d; client_pid_is_set := true;
+      v.dummy <- Some (Pbrt.Decoder.int32_as_varint d);
     end
     | Some (1, pk) -> 
-      Pbrt.Decoder.unexpected_payload "Message(request_session_update_pid), field(1)" pk
+      Pbrt.Decoder.unexpected_payload "Message(request_session_exists), field(1)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
-  begin if not !client_pid_is_set then Pbrt.Decoder.missing_field "client_pid" end;
   ({
-    client_pid = v.client_pid;
-  } : request_session_update_pid)
+    dummy = v.dummy;
+  } : request_session_exists)
 
 let rec decode_pb_request_get_config d =
   let v = default_request_get_config_mutable () in
@@ -1608,6 +1758,72 @@ let rec decode_pb_request_delete d =
     path = v.path;
   } : request_delete)
 
+let rec decode_pb_request_aux_set d =
+  let v = default_request_aux_set_mutable () in
+  let continue__= ref true in
+  let script_name_is_set = ref false in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+      v.path <- List.rev v.path;
+    ); continue__ := false
+    | Some (1, Pbrt.Bytes) -> begin
+      v.path <- (Pbrt.Decoder.string d) :: v.path;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_aux_set), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      v.script_name <- Pbrt.Decoder.string d; script_name_is_set := true;
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_aux_set), field(2)" pk
+    | Some (3, Pbrt.Bytes) -> begin
+      v.tag_value <- Some (Pbrt.Decoder.string d);
+    end
+    | Some (3, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_aux_set), field(3)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  begin if not !script_name_is_set then Pbrt.Decoder.missing_field "script_name" end;
+  ({
+    path = v.path;
+    script_name = v.script_name;
+    tag_value = v.tag_value;
+  } : request_aux_set)
+
+let rec decode_pb_request_aux_delete d =
+  let v = default_request_aux_delete_mutable () in
+  let continue__= ref true in
+  let script_name_is_set = ref false in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+      v.path <- List.rev v.path;
+    ); continue__ := false
+    | Some (1, Pbrt.Bytes) -> begin
+      v.path <- (Pbrt.Decoder.string d) :: v.path;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_aux_delete), field(1)" pk
+    | Some (2, Pbrt.Bytes) -> begin
+      v.script_name <- Pbrt.Decoder.string d; script_name_is_set := true;
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_aux_delete), field(2)" pk
+    | Some (3, Pbrt.Bytes) -> begin
+      v.tag_value <- Some (Pbrt.Decoder.string d);
+    end
+    | Some (3, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_aux_delete), field(3)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  begin if not !script_name_is_set then Pbrt.Decoder.missing_field "script_name" end;
+  ({
+    path = v.path;
+    script_name = v.script_name;
+    tag_value = v.tag_value;
+  } : request_aux_delete)
+
 let rec decode_pb_request_discard d =
   let v = default_request_discard_mutable () in
   let continue__= ref true in
@@ -1647,8 +1863,8 @@ let rec decode_pb_request_session_changed d =
 let rec decode_pb_request_rename d =
   let v = default_request_rename_mutable () in
   let continue__= ref true in
-  let to__is_set = ref false in
-  let from_is_set = ref false in
+  let destination_is_set = ref false in
+  let source_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
@@ -1660,30 +1876,30 @@ let rec decode_pb_request_rename d =
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_rename), field(1)" pk
     | Some (2, Pbrt.Bytes) -> begin
-      v.from <- Pbrt.Decoder.string d; from_is_set := true;
+      v.source <- Pbrt.Decoder.string d; source_is_set := true;
     end
     | Some (2, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_rename), field(2)" pk
     | Some (3, Pbrt.Bytes) -> begin
-      v.to_ <- Pbrt.Decoder.string d; to__is_set := true;
+      v.destination <- Pbrt.Decoder.string d; destination_is_set := true;
     end
     | Some (3, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_rename), field(3)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
-  begin if not !to__is_set then Pbrt.Decoder.missing_field "to_" end;
-  begin if not !from_is_set then Pbrt.Decoder.missing_field "from" end;
+  begin if not !destination_is_set then Pbrt.Decoder.missing_field "destination" end;
+  begin if not !source_is_set then Pbrt.Decoder.missing_field "source" end;
   ({
     edit_level = v.edit_level;
-    from = v.from;
-    to_ = v.to_;
+    source = v.source;
+    destination = v.destination;
   } : request_rename)
 
 let rec decode_pb_request_copy d =
   let v = default_request_copy_mutable () in
   let continue__= ref true in
-  let to__is_set = ref false in
-  let from_is_set = ref false in
+  let destination_is_set = ref false in
+  let source_is_set = ref false in
   while !continue__ do
     match Pbrt.Decoder.key d with
     | None -> (
@@ -1695,23 +1911,23 @@ let rec decode_pb_request_copy d =
     | Some (1, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_copy), field(1)" pk
     | Some (2, Pbrt.Bytes) -> begin
-      v.from <- Pbrt.Decoder.string d; from_is_set := true;
+      v.source <- Pbrt.Decoder.string d; source_is_set := true;
     end
     | Some (2, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_copy), field(2)" pk
     | Some (3, Pbrt.Bytes) -> begin
-      v.to_ <- Pbrt.Decoder.string d; to__is_set := true;
+      v.destination <- Pbrt.Decoder.string d; destination_is_set := true;
     end
     | Some (3, pk) -> 
       Pbrt.Decoder.unexpected_payload "Message(request_copy), field(3)" pk
     | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
   done;
-  begin if not !to__is_set then Pbrt.Decoder.missing_field "to_" end;
-  begin if not !from_is_set then Pbrt.Decoder.missing_field "from" end;
+  begin if not !destination_is_set then Pbrt.Decoder.missing_field "destination" end;
+  begin if not !source_is_set then Pbrt.Decoder.missing_field "source" end;
   ({
     edit_level = v.edit_level;
-    from = v.from;
-    to_ = v.to_;
+    source = v.source;
+    destination = v.destination;
   } : request_copy)
 
 let rec decode_pb_request_comment d =
@@ -2133,8 +2349,10 @@ let rec decode_pb_request d =
       | Some (25, _) -> (Discard (decode_pb_request_discard (Pbrt.Decoder.nested d)) : request) 
       | Some (26, _) -> (Session_changed (decode_pb_request_session_changed (Pbrt.Decoder.nested d)) : request) 
       | Some (27, _) -> (Session_of_pid (decode_pb_request_session_of_pid (Pbrt.Decoder.nested d)) : request) 
-      | Some (28, _) -> (Session_update_pid (decode_pb_request_session_update_pid (Pbrt.Decoder.nested d)) : request) 
+      | Some (28, _) -> (Session_exists (decode_pb_request_session_exists (Pbrt.Decoder.nested d)) : request) 
       | Some (29, _) -> (Get_config (decode_pb_request_get_config (Pbrt.Decoder.nested d)) : request) 
+      | Some (30, _) -> (Aux_set (decode_pb_request_aux_set (Pbrt.Decoder.nested d)) : request) 
+      | Some (31, _) -> (Aux_delete (decode_pb_request_aux_delete (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 
         loop () 
