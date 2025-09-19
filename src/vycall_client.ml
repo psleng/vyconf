@@ -31,6 +31,9 @@ let call_to_node_data ((c: call), (nd: node_data)) =
 
 let commit_data_to_commit_proto cd =
     { session_id = cd.session_id;
+      session_pid = cd.session_pid;
+      sudo_user = cd.sudo_user;
+      user = cd.user;
       dry_run = cd.dry_run;
       atomic = cd.atomic;
       background = cd.background;

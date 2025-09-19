@@ -12,9 +12,19 @@ let tree_source_to_yojson = function
     | ADD -> `String "ADD"
 
 type status = {
-  success : bool;
-  out : string;
+    success : bool;
+    out : string;
 } [@@deriving to_yojson]
+
+let default_status = {
+    success = true;
+    out = "";
+}
+
+let fail_status msg =
+    { success = false;
+      out = msg;
+    }
 
 type node_data = {
     script_name: string;
@@ -39,6 +49,9 @@ let default_node_data = {
 
 type commit_data = {
     session_id: string;
+    session_pid: int32;
+    sudo_user: string;
+    user: string;
     dry_run: bool;
     atomic: bool;
     background: bool;
@@ -48,21 +61,6 @@ type commit_data = {
     config_result: CT.t;
     result : status;
 } [@@deriving to_yojson]
-
-let default_commit_data = {
-    session_id = "";
-    dry_run = false;
-    atomic = false;
-    background = false;
-    init = None;
-    node_list = [];
-    config_diff = CT.default;
-    config_result = CT.default;
-    result = { success = true; out = ""; };
-}
-
-let fail_status msg =
-    { success=false; out=msg }
 
 let lex_order c1 c2 =
     let c = Vyos1x.Util.lex_order c1.path c2.path in
@@ -224,25 +222,31 @@ let config_result_update c_data n_data =
 let commit_update c_data =
     match c_data.init with
     | None ->
-        { default_commit_data with
-          init=Some (fail_status  "commitd failure: no init status provided")
+        { c_data with
+          init = Some (fail_status "commitd failure: no init status provided")
         }
     | Some _ ->
         let func acc_data nd =
             match nd.reply with
             | None ->
-                { default_commit_data with
-                  init=Some (fail_status"commitd failure: no reply status provided")
+                { c_data with
+                  init = Some (fail_status "commitd failure: no reply status provided")
                 }
             | Some _ -> config_result_update acc_data nd
     in List.fold_left func c_data c_data.node_list
 
-let make_commit_data ?(dry_run=false) rt at wt id =
+let make_commit_data ?(dry_run=false) rt at wt id pid sudo_user user =
     let diff = CD.diff_tree [] at wt in
     let del_list, add_list = calculate_priority_lists rt diff in
-    { default_commit_data with
-      session_id = id;
+    { session_id = id;
+      session_pid = pid;
+      sudo_user = sudo_user;
+      user = user;
       dry_run = dry_run;
+      atomic = false;
+      background = false;
+      init = None;
       config_diff = diff;
       config_result = CT.get_subtree diff ["inter"];
-      node_list = del_list @ add_list; }
+      node_list = del_list @ add_list;
+      result = default_status; }

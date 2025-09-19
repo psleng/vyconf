@@ -21,14 +21,16 @@ type request_setup_session = {
   client_pid : int32;
   client_application : string option;
   on_behalf_of : int32 option;
+  client_user : string option;
+  client_sudo_user : string option;
 }
 
 type request_session_of_pid = {
   client_pid : int32;
 }
 
-type request_session_update_pid = {
-  client_pid : int32;
+type request_session_exists = {
+  dummy : int32 option;
 }
 
 type request_get_config = {
@@ -52,6 +54,18 @@ type request_delete = {
   path : string list;
 }
 
+type request_aux_set = {
+  path : string list;
+  script_name : string;
+  tag_value : string option;
+}
+
+type request_aux_delete = {
+  path : string list;
+  script_name : string;
+  tag_value : string option;
+}
+
 type request_discard = {
   dummy : int32 option;
 }
@@ -62,14 +76,14 @@ type request_session_changed = {
 
 type request_rename = {
   edit_level : string list;
-  from : string;
-  to_ : string;
+  source : string;
+  destination : string;
 }
 
 type request_copy = {
   edit_level : string list;
-  from : string;
-  to_ : string;
+  source : string;
+  destination : string;
 }
 
 type request_comment = {
@@ -175,8 +189,10 @@ type request =
   | Discard of request_discard
   | Session_changed of request_session_changed
   | Session_of_pid of request_session_of_pid
-  | Session_update_pid of request_session_update_pid
+  | Session_exists of request_session_exists
   | Get_config of request_get_config
+  | Aux_set of request_aux_set
+  | Aux_delete of request_aux_delete
 
 type request_envelope = {
   token : string option;
@@ -218,6 +234,8 @@ val default_request_setup_session :
   ?client_pid:int32 ->
   ?client_application:string option ->
   ?on_behalf_of:int32 option ->
+  ?client_user:string option ->
+  ?client_sudo_user:string option ->
   unit ->
   request_setup_session
 (** [default_request_setup_session ()] is the default value for type [request_setup_session] *)
@@ -228,11 +246,11 @@ val default_request_session_of_pid :
   request_session_of_pid
 (** [default_request_session_of_pid ()] is the default value for type [request_session_of_pid] *)
 
-val default_request_session_update_pid : 
-  ?client_pid:int32 ->
+val default_request_session_exists : 
+  ?dummy:int32 option ->
   unit ->
-  request_session_update_pid
-(** [default_request_session_update_pid ()] is the default value for type [request_session_update_pid] *)
+  request_session_exists
+(** [default_request_session_exists ()] is the default value for type [request_session_exists] *)
 
 val default_request_get_config : 
   ?dummy:int32 option ->
@@ -265,6 +283,22 @@ val default_request_delete :
   request_delete
 (** [default_request_delete ()] is the default value for type [request_delete] *)
 
+val default_request_aux_set : 
+  ?path:string list ->
+  ?script_name:string ->
+  ?tag_value:string option ->
+  unit ->
+  request_aux_set
+(** [default_request_aux_set ()] is the default value for type [request_aux_set] *)
+
+val default_request_aux_delete : 
+  ?path:string list ->
+  ?script_name:string ->
+  ?tag_value:string option ->
+  unit ->
+  request_aux_delete
+(** [default_request_aux_delete ()] is the default value for type [request_aux_delete] *)
+
 val default_request_discard : 
   ?dummy:int32 option ->
   unit ->
@@ -279,16 +313,16 @@ val default_request_session_changed :
 
 val default_request_rename : 
   ?edit_level:string list ->
-  ?from:string ->
-  ?to_:string ->
+  ?source:string ->
+  ?destination:string ->
   unit ->
   request_rename
 (** [default_request_rename ()] is the default value for type [request_rename] *)
 
 val default_request_copy : 
   ?edit_level:string list ->
-  ?from:string ->
-  ?to_:string ->
+  ?source:string ->
+  ?destination:string ->
   unit ->
   request_copy
 (** [default_request_copy ()] is the default value for type [request_copy] *)
@@ -438,8 +472,8 @@ val pp_request_setup_session : Format.formatter -> request_setup_session -> unit
 val pp_request_session_of_pid : Format.formatter -> request_session_of_pid -> unit 
 (** [pp_request_session_of_pid v] formats v *)
 
-val pp_request_session_update_pid : Format.formatter -> request_session_update_pid -> unit 
-(** [pp_request_session_update_pid v] formats v *)
+val pp_request_session_exists : Format.formatter -> request_session_exists -> unit 
+(** [pp_request_session_exists v] formats v *)
 
 val pp_request_get_config : Format.formatter -> request_get_config -> unit 
 (** [pp_request_get_config v] formats v *)
@@ -455,6 +489,12 @@ val pp_request_set : Format.formatter -> request_set -> unit
 
 val pp_request_delete : Format.formatter -> request_delete -> unit 
 (** [pp_request_delete v] formats v *)
+
+val pp_request_aux_set : Format.formatter -> request_aux_set -> unit 
+(** [pp_request_aux_set v] formats v *)
+
+val pp_request_aux_delete : Format.formatter -> request_aux_delete -> unit 
+(** [pp_request_aux_delete v] formats v *)
 
 val pp_request_discard : Format.formatter -> request_discard -> unit 
 (** [pp_request_discard v] formats v *)
@@ -546,8 +586,8 @@ val encode_pb_request_setup_session : request_setup_session -> Pbrt.Encoder.t ->
 val encode_pb_request_session_of_pid : request_session_of_pid -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_session_of_pid v encoder] encodes [v] with the given [encoder] *)
 
-val encode_pb_request_session_update_pid : request_session_update_pid -> Pbrt.Encoder.t -> unit
-(** [encode_pb_request_session_update_pid v encoder] encodes [v] with the given [encoder] *)
+val encode_pb_request_session_exists : request_session_exists -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_session_exists v encoder] encodes [v] with the given [encoder] *)
 
 val encode_pb_request_get_config : request_get_config -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_get_config v encoder] encodes [v] with the given [encoder] *)
@@ -563,6 +603,12 @@ val encode_pb_request_set : request_set -> Pbrt.Encoder.t -> unit
 
 val encode_pb_request_delete : request_delete -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_delete v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_aux_set : request_aux_set -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_aux_set v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_aux_delete : request_aux_delete -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_aux_delete v encoder] encodes [v] with the given [encoder] *)
 
 val encode_pb_request_discard : request_discard -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_discard v encoder] encodes [v] with the given [encoder] *)
@@ -654,8 +700,8 @@ val decode_pb_request_setup_session : Pbrt.Decoder.t -> request_setup_session
 val decode_pb_request_session_of_pid : Pbrt.Decoder.t -> request_session_of_pid
 (** [decode_pb_request_session_of_pid decoder] decodes a [request_session_of_pid] binary value from [decoder] *)
 
-val decode_pb_request_session_update_pid : Pbrt.Decoder.t -> request_session_update_pid
-(** [decode_pb_request_session_update_pid decoder] decodes a [request_session_update_pid] binary value from [decoder] *)
+val decode_pb_request_session_exists : Pbrt.Decoder.t -> request_session_exists
+(** [decode_pb_request_session_exists decoder] decodes a [request_session_exists] binary value from [decoder] *)
 
 val decode_pb_request_get_config : Pbrt.Decoder.t -> request_get_config
 (** [decode_pb_request_get_config decoder] decodes a [request_get_config] binary value from [decoder] *)
@@ -671,6 +717,12 @@ val decode_pb_request_set : Pbrt.Decoder.t -> request_set
 
 val decode_pb_request_delete : Pbrt.Decoder.t -> request_delete
 (** [decode_pb_request_delete decoder] decodes a [request_delete] binary value from [decoder] *)
+
+val decode_pb_request_aux_set : Pbrt.Decoder.t -> request_aux_set
+(** [decode_pb_request_aux_set decoder] decodes a [request_aux_set] binary value from [decoder] *)
+
+val decode_pb_request_aux_delete : Pbrt.Decoder.t -> request_aux_delete
+(** [decode_pb_request_aux_delete decoder] decodes a [request_aux_delete] binary value from [decoder] *)
 
 val decode_pb_request_discard : Pbrt.Decoder.t -> request_discard
 (** [decode_pb_request_discard decoder] decodes a [request_discard] binary value from [decoder] *)
