@@ -16,7 +16,6 @@ type aux_op = {
 } [@@deriving yojson]
 
 type session_data = {
-    proposed_config : Vyos1x.Config_tree.t;
     modified: bool;
     conf_mode: bool;
     changeset: cfg_op list;

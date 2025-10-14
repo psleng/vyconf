@@ -113,11 +113,10 @@ let enter_conf_mode req token =
         if req.exclusive then (conf_mode_lock := Some session.client_pid; aux token session)
         else aux token session
 
-let exit_conf_mode world token =
+let exit_conf_mode _world token =
     let open Session in
     let session = Hashtbl.find sessions token in
     let session = {session with
-        proposed_config=world.running_config;
         changeset = [];
         modified = false}
     in Hashtbl.replace sessions token session;
