@@ -24,7 +24,7 @@ type session_data = {
     client_pid: int32;
     client_user: string;
     client_sudo_user: string;
-}
+} [@@deriving yojson]
 
 exception Session_error of string
 

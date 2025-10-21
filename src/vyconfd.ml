@@ -186,6 +186,23 @@ let show_config world token (req: request_show_config) =
         {response_tmpl with output=(Some conf_str)}
     with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
 
+let show_sessions _world token (req: request_show_sessions) =
+    let g d s =
+        (Session.session_data_to_yojson d) :: s
+    in
+    let f k d s =
+        match k with
+        | t when t = token ->
+            if req.exclude_self then s
+            else g d s
+        | _ ->
+            if req.exclude_other then s
+            else g d s
+    in
+    let tmp = Hashtbl.fold f sessions [] in
+    let res = Yojson.Safe.to_string @@ `List tmp in
+    {response_tmpl with output=(Some res)}
+
 let validate world token (req: request_validate) =
     try
         let () = (Lwt_log.debug @@ Printf.sprintf "[%s]\n" (Vyos1x.Util.string_of_list req.path)) |> Lwt.ignore_result in
@@ -384,6 +401,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Load r -> load world t r
                     | Some t, Merge r -> merge world t r
                     | Some t, Save r -> save world t r
+                    | Some t, Show_sessions r -> show_sessions world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end

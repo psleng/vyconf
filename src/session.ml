@@ -38,7 +38,7 @@ type session_data = {
     client_pid: int32;
     client_user: string;
     client_sudo_user: string;
-}
+} [@@deriving yojson]
 
 let make _world client_app sudo_user user pid = {
     modified = false;
