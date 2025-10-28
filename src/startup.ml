@@ -97,8 +97,11 @@ let load_config_failsafe main fallback =
 module IC = Vyos1x.Internal.Make(Vyos1x.Config_tree)
 
 let load_config_cache cache_file =
+    (* alert exn Internal.read_internal:
+        [Internal.Read_error] caught
+     *)
     try
-        let cached_config = IC.read_internal cache_file in
+        let cached_config = (IC.read_internal[@alert "-exn"]) cache_file in
         log_info @@ Printf.sprintf "Reading active config from %s" cache_file;
         Ok cached_config
     with Vyos1x.Internal.Read_error msg ->
@@ -106,6 +109,9 @@ let load_config_cache cache_file =
 
 (* Load interface definitions from a directory into a reference tree *)
 let load_interface_definitions dir =
+    (* alert exn Reference_tree.load_from_xml:
+        [Reference_tree.Bad_interface_definition] caught
+     *)
     let open Vyos1x.Reference_tree in
     let relative_paths = FileUtil.ls dir in
     let absolute_paths =
@@ -114,7 +120,7 @@ let load_interface_definitions dir =
     in
     let load_aux tree file =
         log_info @@ Printf.sprintf "Loading interface definitions from %s" file;
-        load_from_xml tree file
+        (load_from_xml[@alert "-exn"]) tree file
     in
     try begin match absolute_paths with
         | Ok paths  -> Ok (List.fold_left load_aux default paths)
@@ -124,8 +130,11 @@ let load_interface_definitions dir =
 module IR = Vyos1x.Internal.Make(Vyos1x.Reference_tree)
 
 let read_reference_tree file =
+    (* alert exn Internal.read_internal:
+        [Internal.Read_error] caught
+     *)
     try
-        let reftree = IR.read_internal file in
+        let reftree = (IR.read_internal[@alert "-exn"]) file in
         log_info @@ Printf.sprintf "Reading interface definitions from %s" file;
         Ok reftree
     with Vyos1x.Internal.Read_error msg -> Error msg
