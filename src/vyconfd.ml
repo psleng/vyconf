@@ -25,6 +25,7 @@ let config_file = ref defaults.config_file
 let basepath = ref "/"
 let log_file = ref None
 let legacy_config_path = ref false
+let reload_active_config = ref false
 
 (* Global data *)
 let sessions : (string, Session.session_data) Hashtbl.t = Hashtbl.create 10
@@ -43,6 +44,7 @@ let args = [
     ("--version", Arg.Unit (fun () -> print_endline @@ Version.version_info (); exit 0), "Print version and exit");
     ("--legacy-config-path", Arg.Unit (fun () -> legacy_config_path := true),
     (Printf.sprintf "Load config file from legacy path %s" defaults.legacy_config_path));
+    ("--reload-active-config", Arg.Unit (fun () -> reload_active_config := true), "Reload active config file");
    ]
 let usage = "Usage: " ^ Sys.argv.(0) ^ " [options]"
 
@@ -311,11 +313,24 @@ let commit world token (req: request_commit) =
                         world.Session.running_config
                         post_proposed;
                         aux_changeset = []; }
-                in Hashtbl.replace sessions token session
+                in
+                Hashtbl.replace sessions token session
             else ();
 
-            let success, msg_str =
+            let write_msg =
+                if not req_dry_run then
+                    match Session.write_running_cache world with
+                    | Ok () -> ""
+                    | Error msg -> msg
+                else ""
+            in
+            let success, result_msg =
                 result_commit_data.result.success, result_commit_data.result.out
+            in
+            let msg_str =
+                match write_msg with
+                | "" -> result_msg
+                | _ -> Printf.sprintf "%s\n %s" result_msg write_msg
             in
             match success with
             | true -> Lwt.return {response_tmpl with status=Success; output=(Some msg_str)}
@@ -423,6 +438,14 @@ let read_reference_tree file =
     | Ok r -> r
     | Error s -> Startup.panic s
 
+let init_write_cache world =
+    (* initial cache of running config; this will be unnecessary once
+       vyconfd is started at boot *)
+    let res = Session.write_running_cache world in
+    match res with
+    | Ok _ ->  ()
+    | Error msg -> (Lwt_log.error msg) |> Lwt.ignore_result
+
 let make_world config dirs =
     let open Session in
     (* the reference_tree json file is generated at vyos-1x build time *)
@@ -443,8 +466,23 @@ let () =
       | false -> (FP.concat vc.config_dir vc.primary_config)
   in
   let failsafe_config = (FP.concat vc.config_dir vc.fallback_config) in
+  let restart_cache = (FP.concat vc.session_dir vc.running_cache) in
   let config =
-      Startup.load_config_failsafe primary_config failsafe_config
+      match !reload_active_config with
+      | true -> let res = Startup.load_config_cache restart_cache in
+                begin
+                match res with
+                | Ok c -> c
+                | Error msg ->
+                    let () = (Lwt_log.error msg) |> Lwt.ignore_result in
+                    Startup.load_config_failsafe primary_config failsafe_config
+                end
+      | false -> Startup.load_config_failsafe primary_config failsafe_config
   in
   let world = Session.{world with running_config=config} in
+  let () =
+      match !reload_active_config with
+      | true -> ()
+      | false -> init_write_cache world
+  in
   Lwt_main.run @@ main_loop !basepath world ()
