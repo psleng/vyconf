@@ -274,16 +274,13 @@ let commit world token (req: request_commit) =
     let proposed_config = Session.get_proposed_config world s in
     let req_dry_run = Option.value req.dry_run ~default:false in
     let commit_data =
-        Session.prepare_commit
-        ~dry_run:req_dry_run
-        world
-        proposed_config
-        token
-        s.client_pid
-        s.client_sudo_user
-        s.client_user
+        Session.prepare_commit ~dry_run:req_dry_run world s proposed_config token
     in
-    let%lwt received_commit_data = VC.do_commit commit_data in
+    match commit_data with
+    | Error msg ->
+        Lwt.return {response_tmpl with status=Internal_error; error=(Some msg)}
+    | Ok c_data ->
+    let%lwt received_commit_data = VC.do_commit c_data in
     let%lwt result_commit_data =
         Lwt.return (CC.commit_update received_commit_data)
     in
