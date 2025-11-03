@@ -161,6 +161,11 @@ type request_reload_reftree = {
   on_behalf_of : int32 option;
 }
 
+type request_show_sessions = {
+  exclude_self : bool;
+  exclude_other : bool;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -193,6 +198,7 @@ type request =
   | Get_config of request_get_config
   | Aux_set of request_aux_set
   | Aux_delete of request_aux_delete
+  | Show_sessions of request_show_sessions
 
 type request_envelope = {
   token : string option;
@@ -432,6 +438,13 @@ val default_request_reload_reftree :
   request_reload_reftree
 (** [default_request_reload_reftree ()] is the default value for type [request_reload_reftree] *)
 
+val default_request_show_sessions : 
+  ?exclude_self:bool ->
+  ?exclude_other:bool ->
+  unit ->
+  request_show_sessions
+(** [default_request_show_sessions ()] is the default value for type [request_show_sessions] *)
+
 val default_request : unit -> request
 (** [default_request ()] is the default value for type [request] *)
 
@@ -556,6 +569,9 @@ val pp_request_exit_configuration_mode : Format.formatter -> request_exit_config
 val pp_request_reload_reftree : Format.formatter -> request_reload_reftree -> unit 
 (** [pp_request_reload_reftree v] formats v *)
 
+val pp_request_show_sessions : Format.formatter -> request_show_sessions -> unit 
+(** [pp_request_show_sessions v] formats v *)
+
 val pp_request : Format.formatter -> request -> unit 
 (** [pp_request v] formats v *)
 
@@ -670,6 +686,9 @@ val encode_pb_request_exit_configuration_mode : request_exit_configuration_mode 
 val encode_pb_request_reload_reftree : request_reload_reftree -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_reload_reftree v encoder] encodes [v] with the given [encoder] *)
 
+val encode_pb_request_show_sessions : request_show_sessions -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_show_sessions v encoder] encodes [v] with the given [encoder] *)
+
 val encode_pb_request : request -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request v encoder] encodes [v] with the given [encoder] *)
 
@@ -783,6 +802,9 @@ val decode_pb_request_exit_configuration_mode : Pbrt.Decoder.t -> request_exit_c
 
 val decode_pb_request_reload_reftree : Pbrt.Decoder.t -> request_reload_reftree
 (** [decode_pb_request_reload_reftree decoder] decodes a [request_reload_reftree] binary value from [decoder] *)
+
+val decode_pb_request_show_sessions : Pbrt.Decoder.t -> request_show_sessions
+(** [decode_pb_request_show_sessions decoder] decodes a [request_show_sessions] binary value from [decoder] *)
 
 val decode_pb_request : Pbrt.Decoder.t -> request
 (** [decode_pb_request decoder] decodes a [request] binary value from [decoder] *)

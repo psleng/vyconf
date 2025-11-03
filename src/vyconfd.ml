@@ -115,11 +115,10 @@ let enter_conf_mode req token =
         if req.exclusive then (conf_mode_lock := Some session.client_pid; aux token session)
         else aux token session
 
-let exit_conf_mode world token =
+let exit_conf_mode _world token =
     let open Session in
     let session = Hashtbl.find sessions token in
     let session = {session with
-        proposed_config=world.running_config;
         changeset = [];
         modified = false}
     in Hashtbl.replace sessions token session;
@@ -188,6 +187,23 @@ let show_config world token (req: request_show_config) =
         let conf_str = Session.show_config world (find_session token) req.path fmt in
         {response_tmpl with output=(Some conf_str)}
     with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
+
+let show_sessions _world token (req: request_show_sessions) =
+    let g d s =
+        (Session.session_data_to_yojson d) :: s
+    in
+    let f k d s =
+        match k with
+        | t when t = token ->
+            if req.exclude_self then s
+            else g d s
+        | _ ->
+            if req.exclude_other then s
+            else g d s
+    in
+    let tmp = Hashtbl.fold f sessions [] in
+    let res = Yojson.Safe.to_string @@ `List tmp in
+    {response_tmpl with output=(Some res)}
 
 let validate world token (req: request_validate) =
     try
@@ -397,6 +413,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Load r -> load world t r
                     | Some t, Merge r -> merge world t r
                     | Some t, Save r -> save world t r
+                    | Some t, Show_sessions r -> show_sessions world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end

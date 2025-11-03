@@ -30,7 +30,6 @@ type aux_op = {
 
 
 type session_data = {
-    proposed_config : CT.t;
     modified: bool;
     conf_mode: bool;
     changeset: cfg_op list;
@@ -39,10 +38,9 @@ type session_data = {
     client_pid: int32;
     client_user: string;
     client_sudo_user: string;
-}
+} [@@deriving yojson]
 
-let make world client_app sudo_user user pid = {
-    proposed_config = world.running_config;
+let make _world client_app sudo_user user pid = {
     modified = false;
     conf_mode = false;
     changeset = [];
