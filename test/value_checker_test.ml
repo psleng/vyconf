@@ -1,3 +1,5 @@
+[@@@alert "-exn"]
+
 open OUnit2
 
 module VC = Vyos1x.Value_checker

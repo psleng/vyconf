@@ -73,29 +73,40 @@ let set_modified s =
     else {s with modified = true}
 
 let apply_cfg_op w op config =
+    (* alert exn RT.refpath; RT.is_leaf; CT.set; CT.create_node; RT.set_tag_value:
+        [Vytree.Empty_path] not possible as checked in set
+        [Vytree.Nonexistent_path] not possible as checked in validate, in set
+       alert exn CT.set; CT.create_node:
+        [Config_tree.Useless_set] caught
+       alert exn CT.set:
+        [Config_tree.Duplicate_value] caught
+       alert exn CT.delete; CT.prune_delete:
+        [Vytree.Empty_path] not possible as checked in delete
+        [Vytree.Nonexistent_path] not possible as checked in update_delete
+     *)
     let result =
     match op with
     | CfgSet (path, value, value_behaviour) ->
         begin
         let rt = w.reference_tree in
-        let refp = RT.refpath rt path in
+        let refp = (RT.refpath[@alert "-exn"]) rt path in
         try
             let c =
-            match (RT.is_leaf rt refp) with
+            match ((RT.is_leaf[@alert "-exn"]) rt refp) with
             | true ->
-                CT.set config path value value_behaviour
+                (CT.set[@alert "-exn"]) config path value value_behaviour
             | false ->
-                CT.create_node config path
+                (CT.create_node[@alert "-exn"]) config path
             in
-            RT.set_tag_data rt c path
+            (RT.set_tag_data[@alert "-exn"]) rt c path
         with
         | CT.Useless_set | CT.Duplicate_value -> config
         end
     | CfgDelete (path, value) -> 
         begin
         try
-            CT.delete config path value |>
-            (fun c -> CT.prune_delete c path)
+            (CT.delete[@alert "-exn"]) config path value |>
+            (fun c -> (CT.prune_delete[@alert "-exn"]) c path)
         with
         | VT.Nonexistent_path | CT.No_such_value -> config
         end
@@ -107,15 +118,20 @@ let rec apply_changes w changeset config =
     | c :: cs -> apply_changes w cs (apply_cfg_op w c config)
 
 let validate w _s path =
+    (* alert exn RT.validate_path:
+        [Reference_tree.Validation_error] caught
+     *)
     try
-        RT.validate_path D.(w.dirs.validators) w.reference_tree path
+        (RT.validate_path[@alert "-exn"]) D.(w.dirs.validators) w.reference_tree path
     with RT.Validation_error x -> raise (Session_error x)
 
 let validate_tree w t =
-    let out = RT.validate_tree D.(w.dirs.validators) w.reference_tree t in
-    match out with
-    | "" -> ()
-    | _ -> raise (Session_error out)
+    try
+        let out = (RT.validate_tree[@alert "-exn"]) D.(w.dirs.validators) w.reference_tree t in
+        match out with
+        | "" -> ()
+        | _ -> raise (Session_error out)
+    with RT.Validation_error x -> raise (Session_error x)
 
 let split_path w path =
     RT.split_path w.reference_tree path
@@ -125,19 +141,46 @@ let get_proposed_config w s =
     apply_changes w (List.rev s.changeset) c
 
 let update_set w changeset path =
+    (* alert exn RT.refpath; RT.is_multi:
+        [Vytree.Empty_path] checked or n/a in callers set, aux_set, get_changeset
+        [Vytree.Nonexistent_path] checked or n/a in callers set, aux_set, get_changeset
+     *)
     let path, value = split_path w path in
-    let refpath = RT.refpath w.reference_tree path in
-    let value_behaviour = if RT.is_multi w.reference_tree refpath then CT.AddValue else CT.ReplaceValue in
+    let refpath = (RT.refpath[@alert "-exn"]) w.reference_tree path in
+    let value_behaviour =
+        if (RT.is_multi[@alert "-exn"]) w.reference_tree refpath
+        then CT.AddValue else CT.ReplaceValue
+    in
     let op = CfgSet (path, value, value_behaviour) in
     (op :: changeset)
 
 let update_delete w changeset path =
+    (* alert exn VT.exists; CT.value_exists:
+        [Vytree.Empty_path] checked or n/a in callers delete, aux_delete, get_changeset
+       alert exn CT.value_exists:
+        [Vytree.Nonexistent_path] checked by VT.exists
+     *)
     let path, value = split_path w path in
+    if not ((VT.exists[@alert "-exn"]) w.running_config path)
+    then raise (Session_error "Non-existent path")
+    else
+    let check_value =
+        match value with
+        | None -> true
+        | Some v -> (CT.value_exists[@alert "-exn"]) w.running_config path v
+    in
+    if not check_value
+    then raise (Session_error "Non-existent value")
+    else
     let op = CfgDelete (path, value) in
     (op :: changeset)
 
 let get_changeset w lt rt =
-    let diff = CD.diff_tree [] lt rt in
+    (* alert exn CD.diff_tree:
+        [Config_diff.Incommensurable] not possible for base root
+        [Config_diff.Empty_comparison] not possible for empty path
+     *)
+    let diff = (CD.diff_tree[@alert "-exn"]) [] lt rt in
     let add_tree = CT.get_subtree diff ["add"] in
     let del_tree = CT.get_subtree diff ["del"] in
     let add_changeset =
@@ -149,15 +192,24 @@ let get_changeset w lt rt =
     add_changeset @ del_changeset
 
 let set w s path =
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Path is empty")
+    else
     let _ = validate w s path in
     let changeset' = update_set w s.changeset path in
     { s with changeset = changeset' }
 
 let delete w s path =
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Path is empty")
+    else
     let changeset' = update_delete w s.changeset path in
     { s with changeset = changeset' }
 
 let aux_set w s path name tagval =
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Path is empty")
+    else
     let _ = validate w s path in
     let aux = s.aux_changeset in
     let ident y =
@@ -176,11 +228,15 @@ let aux_set w s path name tagval =
     { script_name = name; tag_value = tagval; changeset = changeset' }
     in
     let aux_changeset' =
-        VL.replace ~force:true ident op aux
+        (* Vylist.replace does not raise exception when force=true *)
+        (VL.replace[@alert "-exn"]) ~force:true ident op aux
     in
     s.aux_changeset <- aux_changeset'
 
 let aux_delete w s path name tagval =
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Path is empty")
+    else
     let aux = s.aux_changeset in
     let ident y =
         if (y.script_name <> name || y.tag_value <> tagval) then false
@@ -198,7 +254,8 @@ let aux_delete w s path name tagval =
     { script_name = name; tag_value = tagval; changeset = changeset' }
     in
     let aux_changeset' =
-        VL.replace ~force:true ident op aux
+        (* Vylist.replace does not raise exception when force=true *)
+        (VL.replace[@alert "-exn"]) ~force:true ident op aux
     in
     s.aux_changeset <- aux_changeset'
 
@@ -209,17 +266,24 @@ let session_changed w s =
     (* structural equality test requires consistent ordering, which is
      * practised, but may be unreliable; test actual difference
      *)
+    (* alert exn CD.diff_tree:
+        [Config_diff.Incommensurable] not possible for base root
+        [Config_diff.Empty_comparison] not possible for empty path
+     *)
     let c = get_proposed_config w s in
-    let diff = CD.diff_tree [] w.running_config c in
+    let diff = (CD.diff_tree[@alert "-exn"]) [] w.running_config c in
     let add_tree = CT.get_subtree diff ["add"] in
     let del_tree = CT.get_subtree diff ["del"] in
     (del_tree <> CT.default) || (add_tree <> CT.default)
 
 let load w s file cached =
+    (* alert exn Internal.read_internal:
+        [Internal.Read_error] caught
+     *)
     let ct =
         if cached then
             try
-                Ok (IC.read_internal file)
+                Ok ((IC.read_internal[@alert "-exn"]) file)
             with Vyos1x.Internal.Read_error e ->
                 Error e
         else
@@ -232,13 +296,18 @@ let load w s file cached =
         { s with changeset = get_changeset w w.running_config config; }
 
 let merge w s file destructive =
+    (* alert exn CD.tree_merge:
+        [Tree_alg.Incompatible_union] not possible for base root
+        [Tree_alg.Nonexistent_child] not reachable
+     *)
     let ct = Vyos1x.Config_file.load_config file in
     match ct with
     | Error e -> raise (Session_error (Printf.sprintf "Error loading config: %s" e))
     | Ok config ->
         let () = validate_tree w config in
         let proposed = get_proposed_config w s in
-        let merged = CD.tree_merge ~destructive:destructive proposed config
+        let merged =
+            (CD.tree_merge[@alert "-exn"]) ~destructive:destructive proposed config
         in
         { s with changeset = get_changeset w w.running_config merged; }
 
@@ -250,10 +319,13 @@ let save w s file =
     | Ok () -> s
 
 let write_running_cache w =
+    (* alert exn Internal.write_internal:
+        [Internal.Write_error] caught
+     *)
     let vc = w.vyconf_config in
     try
         let () =
-            IC.write_internal_atomic
+            (IC.write_internal_atomic[@alert "-exn"])
             w.running_config
             (FP.concat vc.session_dir vc.running_cache);
         in Ok ()
@@ -264,10 +336,13 @@ let write_running_cache w =
             in Error msg
 
 let write_session_cache w config =
+    (* alert exn Internal.write_internal:
+        [Internal.Write_error] caught
+     *)
     let vc = w.vyconf_config in
     try
         let () =
-            IC.write_internal
+            (IC.write_internal[@alert "-exn"])
             config
             (FP.concat vc.session_dir vc.session_cache);
         in Ok ()
@@ -322,6 +397,9 @@ let post_process_commit w s ((c_data: CC.commit_data), proposed_config) =
     List.fold_left func (c_data.config_result, proposed_config) c_data.node_list
 
 let get_config w s id =
+    (* alert exn Internal.write_internal:
+        [Internal.Write_error] caught
+     *)
     let at = w.running_config in
     let wt = get_proposed_config w s in
     let vc = w.vyconf_config in
@@ -329,13 +407,13 @@ let get_config w s id =
     let session_cache = Printf.sprintf "%s_%s" vc.session_cache id in
     let () =
         try
-            IC.write_internal at (FP.concat vc.session_dir running_cache)
+            (IC.write_internal[@alert "-exn"]) at (FP.concat vc.session_dir running_cache)
         with
             Vyos1x.Internal.Write_error msg -> raise (Session_error msg)
     in
     let () =
         try
-            IC.write_internal wt (FP.concat vc.session_dir session_cache)
+            (IC.write_internal[@alert "-exn"]) wt (FP.concat vc.session_dir session_cache)
         with
             Vyos1x.Internal.Write_error msg -> raise (Session_error msg)
     in id
@@ -352,53 +430,98 @@ let cleanup_config w id =
     remove_file (FP.concat vc.session_dir session_cache)
 
 let get_value w s path =
-    let c = get_proposed_config w s in
-    if not (VT.exists c path) then
+    (* alert exn VT.exists:
+        [Vytree.Empty_path] checked
+       alert exn RT.repath; RT.is_leaf; RT.is_multi; RT.is_valueless:
+        [Vytree.Empty_path] checked
+        [Vytree.Nonexistent_path] checked by VT.exists
+       alert exn CT.get_value:
+        [Vytree.Empty_path] checked
+        [Vytree.Nonexistent_path] checked by VT.exists
+        [Config_tree.Node_has_no_value] checked by RT.is_valueless
+     *)
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Config path is empty")
+    else let c = get_proposed_config w s in
+    if not ((VT.exists[@alert "-exn"]) c path) then
         raise (Session_error ("Config path does not exist"))
-    else let refpath = RT.refpath w.reference_tree path in
-    if not (RT.is_leaf w.reference_tree refpath) then
+    else let refpath = (RT.refpath[@alert "-exn"]) w.reference_tree path in
+    if not ((RT.is_leaf[@alert "-exn"]) w.reference_tree refpath) then
         raise (Session_error "Cannot get a value of a non-leaf node")
-    else if (RT.is_multi w.reference_tree refpath) then
+    else if ((RT.is_multi[@alert "-exn"]) w.reference_tree refpath) then
         raise (Session_error "This node can have more than one value")
-    else if (RT.is_valueless w.reference_tree refpath) then
-        raise (Session_error "This node can have more than one value")
-    else CT.get_value c path
+    else if ((RT.is_valueless[@alert "-exn"]) w.reference_tree refpath) then
+        raise (Session_error "This node is valueless")
+    else (CT.get_value[@alert "-exn"]) c path
 
 let get_values w s path =
-    let c = get_proposed_config w s in
-    if not (VT.exists c path) then
+    (* alert exn VT.exists:
+        [Vytree.Empty_path] checked
+       alert exn RT.repath; RT.is_leaf; RT.is_multi; RT.is_valueless; CT.get_values:
+        [Vytree.Empty_path] checked
+        [Vytree.Nonexistent_path] checked by VT.exists
+     *)
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Config path is empty")
+    else let c = get_proposed_config w s in
+    if not ((VT.exists[@alert "-exn"]) c path) then
         raise (Session_error ("Config path does not exist"))
-    else let refpath = RT.refpath w.reference_tree path in
-    if not (RT.is_leaf w.reference_tree refpath) then
+    else let refpath = (RT.refpath[@alert "-exn"]) w.reference_tree path in
+    if not ((RT.is_leaf[@alert "-exn"]) w.reference_tree refpath) then
         raise (Session_error "Cannot get a value of a non-leaf node")
-    else if not (RT.is_multi w.reference_tree refpath) then
+    else if not ((RT.is_multi[@alert "-exn"]) w.reference_tree refpath) then
         raise (Session_error "This node can have only one value")
-    else CT.get_values c path
+    else (CT.get_values[@alert "-exn"]) c path
 
 let list_children w s path =
-    let c = get_proposed_config w s in
-    if not (VT.exists c path) then
+    (* alert exn VT.exists:
+        [Vytree.Empty_path] checked
+       alert exn RT.repath; RT.is_leaf; VT.children_of_path:
+        [Vytree.Empty_path] checked
+        [Vytree.Nonexistent_path] checked by VT.exists
+     *)
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Config path is empty")
+    else let c = get_proposed_config w s in
+    if not ((VT.exists[@alert "-exn"]) c path) then
         raise (Session_error ("Config path does not exist"))
-    else let refpath = RT.refpath w.reference_tree path in
-    if (RT.is_leaf w.reference_tree refpath) then
+    else let refpath = (RT.refpath[@alert "-exn"]) w.reference_tree path in
+    if ((RT.is_leaf[@alert "-exn"]) w.reference_tree refpath) then
         raise (Session_error "Cannot list children of a leaf node")
-    else VT.children_of_path c path
+    else (VT.children_of_path[@alert "-exn"]) c path
 
 let exists w s path =
-    let c = get_proposed_config w s in
-    VT.exists c path
+    (* alert exn VT.exists:
+        [Vytree.Empty_path] checked
+     *)
+    if Vyos1x.Util.is_empty path
+    then raise (Session_error "Path is empty")
+    else let c = get_proposed_config w s in
+    (VT.exists[@alert "-exn"]) c path
 
 let show_config w s path fmt =
+    (* alert exn VT.exists:
+        [Vytree.Empty_path] non-empty in conditional
+       alert exn CT.render_at_level:
+        [Vytree.Nonexistent_path] checked by VT.exists
+       alert exn VT.get:
+        [Vytree.Empty_path] non-empty in pattern match
+        [Vytree.Nonexistent_path] checked by VT.exists
+     *)
     let open Vyconf_connect.Vyconf_pbt in
     let c = get_proposed_config w s in
-    if (path <> []) && not (VT.exists c path) then
+    if (path <> []) && not ((VT.exists[@alert "-exn"]) c path) then
         raise (Session_error ("Path does not exist")) 
     else
         let node = c in
         match fmt with
-        | Curly -> CT.render_at_level node path
+        | Curly -> (CT.render_at_level[@alert "-exn"]) node path
         | Json ->
             let node =
-                (match path with [] -> c |
-                                 _ as ps -> VT.get c ps) in
+                begin
+                match path with
+                | [] -> c
+                | _ as ps -> (VT.get[@alert "-exn"]) c ps
+                end
+            in
             CT.to_yojson node |> Yojson.Safe.pretty_to_string
