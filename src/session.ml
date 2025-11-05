@@ -499,29 +499,15 @@ let exists w s path =
     else let c = get_proposed_config w s in
     (VT.exists[@alert "-exn"]) c path
 
-let show_config w s path fmt =
-    (* alert exn VT.exists:
-        [Vytree.Empty_path] non-empty in conditional
-       alert exn CT.render_at_level:
-        [Vytree.Nonexistent_path] checked by VT.exists
-       alert exn VT.get:
-        [Vytree.Empty_path] non-empty in pattern match
-        [Vytree.Nonexistent_path] checked by VT.exists
-     *)
-    let open Vyconf_connect.Vyconf_pbt in
-    let c = get_proposed_config w s in
-    if (path <> []) && not ((VT.exists[@alert "-exn"]) c path) then
-        raise (Session_error ("Path does not exist")) 
+let show_config w s path =
+    let proposed_config = get_proposed_config w s in
+    if (path <> []) && not ((VT.exists[@alert "-exn"]) proposed_config path)
+    then raise (Session_error "Path does not exist")
     else
-        let node = c in
-        match fmt with
-        | Curly -> (CT.render_at_level[@alert "-exn"]) node path
-        | Json ->
-            let node =
-                begin
-                match path with
-                | [] -> c
-                | _ as ps -> (VT.get[@alert "-exn"]) c ps
-                end
-            in
-            CT.to_yojson node |> Yojson.Safe.pretty_to_string
+    let res =
+        (CD.diff_show[@alert "-exn"])
+        w.reference_tree
+        path
+        w.running_config
+        proposed_config
+    in res

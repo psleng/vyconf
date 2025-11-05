@@ -183,8 +183,7 @@ let list_children world token (req: request_list_children) =
 
 let show_config world token (req: request_show_config) =
     try
-        let fmt = Option.value req.format ~default:Curly in
-        let conf_str = Session.show_config world (find_session token) req.path fmt in
+        let conf_str = Session.show_config world (find_session token) req.path in
         {response_tmpl with output=(Some conf_str)}
     with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
 

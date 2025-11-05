@@ -80,4 +80,4 @@ val get_config : world -> session_data -> string -> string
 
 val cleanup_config : world -> string -> unit
 
-val show_config : world -> session_data -> string list -> Vyconf_connect.Vyconf_pbt.request_config_format -> string
+val show_config : world -> session_data -> string list -> string
