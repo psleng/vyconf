@@ -97,6 +97,14 @@ let add_tag_instance cd cs tv =
     CS.add { cd with tag_value = Some tv; } cs
 
 let get_node_data rt ct src (path, cs') t =
+    (* alert exn CT.is_tag_value;
+                 RT.refpath;
+                 RT.get_priority;
+                 RT.get_owner;
+                 RT.is_tag:
+        [Vytree.Empty_path] not possible in branch of non-empty path
+        [Vytree.Nonexistent_path] not possible in fold_tree_with_path
+     *)
     if Vyos1x.Util.is_empty path then
         (path, cs')
     else
@@ -106,16 +114,16 @@ let get_node_data rt ct src (path, cs') t =
     let rpath = List.rev path in
     (* the following is critical to avoid redundant calculations for owner
        of a tag node, quadratic in the number of tag node values *)
-    if CT.is_tag_value ct rpath then
+    if (CT.is_tag_value[@alert "-exn"]) ct rpath then
         (path, cs')
     else
-    let rt_path = RT.refpath rt rpath in
+    let rt_path = (RT.refpath[@alert "-exn"]) rt rpath in
     let priority =
-        match RT.get_priority rt rt_path with
+        match (RT.get_priority[@alert "-exn"]) rt rt_path with
         | None -> 0
         | Some s -> int_of_string s
     in
-    let owner = RT.get_owner rt rt_path in
+    let owner = (RT.get_owner[@alert "-exn"]) rt rt_path in
     match owner with
     | None -> (path, cs')
     | Some owner_str ->
@@ -128,7 +136,7 @@ let get_node_data rt ct src (path, cs') t =
                    source = src; }
     in
     let tag_values =
-        match RT.is_tag rt rt_path with
+        match (RT.is_tag[@alert "-exn"]) rt rt_path with
         | false -> []
         | true -> VT.list_children t
     in
@@ -147,13 +155,16 @@ let get_commit_set rt ct src =
    the path is in a subtree, however, insert in the add queue - cf. T5492
 *)
 let legacy_order del_t a b =
+    (* alert exn Vytree.is_terminal_path:
+        [Vytree.Empty_path] not possible as cdata.path non-empty
+     *)
     let shift c_data (c_del, c_add) =
         let path =
             match c_data.tag_value with
             | None -> c_data.path
             | Some v -> c_data.path @ [v]
         in
-        match VT.is_terminal_path del_t path with
+        match (VT.is_terminal_path[@alert "-exn"]) del_t path with
         | false -> CS.remove c_data c_del, CS.add c_data c_add
         | true -> c_del, c_add
     in
@@ -173,33 +184,47 @@ let calculate_priority_lists rt diff =
        on failure, deleted paths are added back in, added paths ignored
  *)
 let config_result_update c_data n_data =
+    (* alert exn CD.clone:
+        [Vytree.Nonexistent_path] not possible for node_data.path
+       alert exn CD.tree_union:
+        [Tree_alg.Incompatible_union] not possible for base root
+        [Tree_alg.Nonexistent_child] non reachable
+     *)
     match n_data.reply with
     | None -> c_data (* already exluded in calling function *)
     | Some r ->
     match r.success, n_data.source with
     | true, ADD ->
-        let add = CT.get_subtree c_data.config_diff ["add"] in
+        let add =
+            CT.get_subtree c_data.config_diff ["add"]
+        in
         let path =
             match n_data.tag_value with
             | None -> n_data.path
             | Some v -> n_data.path @ [v]
         in
-        let add_tree = CD.clone add (CT.default) path in
-        let config = CD.tree_union add_tree c_data.config_result in
+        let add_tree = (CD.clone[@alert "-exn"]) add (CT.default) path in
+        let config =
+            (CD.tree_union[@alert "-exn"]) add_tree c_data.config_result
+        in
         let result =
             { success = c_data.result.success && true;
               out = c_data.result.out ^ r.out; }
         in
         { c_data with config_result = config; result = result; }
     | false, DELETE ->
-        let sub = CT.get_subtree c_data.config_diff ["sub"] in
+        let sub =
+            CT.get_subtree c_data.config_diff ["sub"]
+        in
         let path =
             match n_data.tag_value with
             | None -> n_data.path
             | Some v -> n_data.path @ [v]
         in
-        let add_tree = CD.clone sub (CT.default) path in
-        let config = CD.tree_union add_tree c_data.config_result in
+        let add_tree = (CD.clone[@alert "-exn"]) sub (CT.default) path in
+        let config =
+            (CD.tree_union[@alert "-exn"]) add_tree c_data.config_result
+        in
         let result =
             { success = c_data.result.success && false;
               out = c_data.result.out ^ r.out; }
@@ -236,7 +261,11 @@ let commit_update c_data =
     in List.fold_left func c_data c_data.node_list
 
 let make_commit_data ?(dry_run=false) rt at wt id pid sudo_user user =
-    let diff = CD.diff_tree [] at wt in
+    (* alert exn CD.diff_tree:
+        [Config_diff.Incommensurable] not possible as base root
+        [Config_diff.Empty_comparison] not reachable for path []
+     *)
+    let diff = (CD.diff_tree[@alert "-exn"]) [] at wt in
     let del_list, add_list = calculate_priority_lists rt diff in
     { session_id = id;
       session_pid = pid;

@@ -16,7 +16,6 @@ type aux_op = {
 } [@@deriving yojson]
 
 type session_data = {
-    proposed_config : Vyos1x.Config_tree.t;
     modified: bool;
     conf_mode: bool;
     changeset: cfg_op list;
@@ -25,7 +24,7 @@ type session_data = {
     client_pid: int32;
     client_user: string;
     client_sudo_user: string;
-}
+} [@@deriving yojson]
 
 exception Session_error of string
 
@@ -69,7 +68,11 @@ val list_children : world -> session_data -> string list -> string list
 
 val string_of_op : cfg_op -> string
 
-val prepare_commit : ?dry_run:bool -> world -> Vyos1x.Config_tree.t -> string -> int32 -> string -> string -> Commitd_client.Commit.commit_data
+val write_running_cache : world -> (unit, string) result
+
+val write_session_cache : world -> Vyos1x.Config_tree.t -> (unit, string) result
+
+val prepare_commit : ?dry_run:bool -> world -> session_data -> Vyos1x.Config_tree.t -> string -> (Commitd_client.Commit.commit_data, string) result
 
 val post_process_commit : world -> session_data -> Commitd_client.Commit.commit_data * Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t * Vyos1x.Config_tree.t
 

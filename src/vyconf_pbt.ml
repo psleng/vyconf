@@ -154,6 +154,11 @@ type request_reload_reftree = {
   on_behalf_of : int32 option;
 }
 
+type request_show_sessions = {
+  exclude_self : bool;
+  exclude_other : bool;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -186,6 +191,7 @@ type request =
   | Get_config of request_get_config
   | Aux_set of request_aux_set
   | Aux_delete of request_aux_delete
+  | Show_sessions of request_show_sessions
 
 type request_envelope = {
   token : string option;
@@ -443,6 +449,14 @@ let rec default_request_reload_reftree
   ?on_behalf_of:((on_behalf_of:int32 option) = None)
   () : request_reload_reftree  = {
   on_behalf_of;
+}
+
+let rec default_request_show_sessions 
+  ?exclude_self:((exclude_self:bool) = false)
+  ?exclude_other:((exclude_other:bool) = false)
+  () : request_show_sessions  = {
+  exclude_self;
+  exclude_other;
 }
 
 let rec default_request (): request = Prompt
@@ -749,6 +763,16 @@ let default_request_reload_reftree_mutable () : request_reload_reftree_mutable =
   on_behalf_of = None;
 }
 
+type request_show_sessions_mutable = {
+  mutable exclude_self : bool;
+  mutable exclude_other : bool;
+}
+
+let default_request_show_sessions_mutable () : request_show_sessions_mutable = {
+  exclude_self = false;
+  exclude_other = false;
+}
+
 type request_envelope_mutable = {
   mutable token : string option;
   mutable request : request;
@@ -1001,6 +1025,13 @@ let rec pp_request_reload_reftree fmt (v:request_reload_reftree) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
+let rec pp_request_show_sessions fmt (v:request_show_sessions) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "exclude_self" Pbrt.Pp.pp_bool fmt v.exclude_self;
+    Pbrt.Pp.pp_record_field ~first:false "exclude_other" Pbrt.Pp.pp_bool fmt v.exclude_other;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
 let rec pp_request fmt (v:request) =
   match v with
   | Prompt  -> Format.fprintf fmt "Prompt"
@@ -1034,6 +1065,7 @@ let rec pp_request fmt (v:request) =
   | Get_config x -> Format.fprintf fmt "@[<hv2>Get_config(@,%a)@]" pp_request_get_config x
   | Aux_set x -> Format.fprintf fmt "@[<hv2>Aux_set(@,%a)@]" pp_request_aux_set x
   | Aux_delete x -> Format.fprintf fmt "@[<hv2>Aux_delete(@,%a)@]" pp_request_aux_delete x
+  | Show_sessions x -> Format.fprintf fmt "@[<hv2>Show_sessions(@,%a)@]" pp_request_show_sessions x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
   let pp_i fmt () =
@@ -1411,6 +1443,13 @@ let rec encode_pb_request_reload_reftree (v:request_reload_reftree) encoder =
   end;
   ()
 
+let rec encode_pb_request_show_sessions (v:request_show_sessions) encoder = 
+  Pbrt.Encoder.bool v.exclude_self encoder;
+  Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  Pbrt.Encoder.bool v.exclude_other encoder;
+  Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
+  ()
+
 let rec encode_pb_request (v:request) encoder = 
   begin match v with
   | Prompt ->
@@ -1506,6 +1545,9 @@ let rec encode_pb_request (v:request) encoder =
   | Aux_delete x ->
     Pbrt.Encoder.nested encode_pb_request_aux_delete x encoder;
     Pbrt.Encoder.key 31 Pbrt.Bytes encoder; 
+  | Show_sessions x ->
+    Pbrt.Encoder.nested encode_pb_request_show_sessions x encoder;
+    Pbrt.Encoder.key 32 Pbrt.Bytes encoder; 
   end
 
 let rec encode_pb_request_envelope (v:request_envelope) encoder = 
@@ -2309,6 +2351,34 @@ let rec decode_pb_request_reload_reftree d =
     on_behalf_of = v.on_behalf_of;
   } : request_reload_reftree)
 
+let rec decode_pb_request_show_sessions d =
+  let v = default_request_show_sessions_mutable () in
+  let continue__= ref true in
+  let exclude_other_is_set = ref false in
+  let exclude_self_is_set = ref false in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.exclude_self <- Pbrt.Decoder.bool d; exclude_self_is_set := true;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_show_sessions), field(1)" pk
+    | Some (2, Pbrt.Varint) -> begin
+      v.exclude_other <- Pbrt.Decoder.bool d; exclude_other_is_set := true;
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_show_sessions), field(2)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  begin if not !exclude_other_is_set then Pbrt.Decoder.missing_field "exclude_other" end;
+  begin if not !exclude_self_is_set then Pbrt.Decoder.missing_field "exclude_self" end;
+  ({
+    exclude_self = v.exclude_self;
+    exclude_other = v.exclude_other;
+  } : request_show_sessions)
+
 let rec decode_pb_request d = 
   let rec loop () = 
     let ret:request = match Pbrt.Decoder.key d with
@@ -2353,6 +2423,7 @@ let rec decode_pb_request d =
       | Some (29, _) -> (Get_config (decode_pb_request_get_config (Pbrt.Decoder.nested d)) : request) 
       | Some (30, _) -> (Aux_set (decode_pb_request_aux_set (Pbrt.Decoder.nested d)) : request) 
       | Some (31, _) -> (Aux_delete (decode_pb_request_aux_delete (Pbrt.Decoder.nested d)) : request) 
+      | Some (32, _) -> (Show_sessions (decode_pb_request_show_sessions (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 
         loop () 

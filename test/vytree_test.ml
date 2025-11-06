@@ -1,4 +1,5 @@
 [@@@ocaml.warning "-27"]
+[@@@alert "-exn"]
 
 open OUnit2
 open Vyos1x.Vytree

@@ -160,6 +160,11 @@ message Request {
     optional int32 on_behalf_of = 1;
   }
 
+  message ShowSessions {
+    required bool exclude_self = 1;
+    required bool exclude_other = 2;
+  }
+
 
   oneof msg {
     Prompt prompt = 1;
@@ -193,6 +198,7 @@ message Request {
     GetConfig get_config = 29;
     AuxSet aux_set = 30;
     AuxDelete aux_delete = 31;
+    ShowSessions show_sessions = 32;
   }
 }
 

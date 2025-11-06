@@ -1,3 +1,5 @@
+[@@@alert "-exn"]
+
 open OUnit2
 
 module RT = Vyos1x.Reference_tree
