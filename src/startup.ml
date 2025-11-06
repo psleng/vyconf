@@ -94,8 +94,24 @@ let load_config_failsafe main fallback =
             | Error msg -> panic (Printf.sprintf "Failed to load fallback config %s: %s, exiting" fallback msg)
         end
 
+module IC = Vyos1x.Internal.Make(Vyos1x.Config_tree)
+
+let load_config_cache cache_file =
+    (* alert exn Internal.read_internal:
+        [Internal.Read_error] caught
+     *)
+    try
+        let cached_config = (IC.read_internal[@alert "-exn"]) cache_file in
+        log_info @@ Printf.sprintf "Reading active config from %s" cache_file;
+        Ok cached_config
+    with Vyos1x.Internal.Read_error msg ->
+        Error (Printf.sprintf "Failed to load active config %s: %s, exiting" cache_file msg)
+
 (* Load interface definitions from a directory into a reference tree *)
 let load_interface_definitions dir =
+    (* alert exn Reference_tree.load_from_xml:
+        [Reference_tree.Bad_interface_definition] caught
+     *)
     let open Vyos1x.Reference_tree in
     let relative_paths = FileUtil.ls dir in
     let absolute_paths =
@@ -104,18 +120,21 @@ let load_interface_definitions dir =
     in
     let load_aux tree file =
         log_info @@ Printf.sprintf "Loading interface definitions from %s" file;
-        load_from_xml tree file
+        (load_from_xml[@alert "-exn"]) tree file
     in
     try begin match absolute_paths with
         | Ok paths  -> Ok (List.fold_left load_aux default paths)
         | Error msg -> Error msg end
     with Bad_interface_definition msg -> Error msg
 
-module I = Vyos1x.Internal.Make(Vyos1x.Reference_tree)
+module IR = Vyos1x.Internal.Make(Vyos1x.Reference_tree)
 
 let read_reference_tree file =
+    (* alert exn Internal.read_internal:
+        [Internal.Read_error] caught
+     *)
     try
-        let reftree = I.read_internal file in
+        let reftree = (IR.read_internal[@alert "-exn"]) file in
         log_info @@ Printf.sprintf "Reading interface definitions from %s" file;
         Ok reftree
-    with Sys_error msg -> Error msg
+    with Vyos1x.Internal.Read_error msg -> Error msg

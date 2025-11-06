@@ -1,4 +1,5 @@
 [@@@ocaml.warning "-27"]
+[@@@alert "-exn"]
 
 module VT = Vyos1x.Vytree
 module VL = Vyos1x.Vylist

@@ -25,6 +25,7 @@ let config_file = ref defaults.config_file
 let basepath = ref "/"
 let log_file = ref None
 let legacy_config_path = ref false
+let reload_active_config = ref false
 
 (* Global data *)
 let sessions : (string, Session.session_data) Hashtbl.t = Hashtbl.create 10
@@ -43,6 +44,7 @@ let args = [
     ("--version", Arg.Unit (fun () -> print_endline @@ Version.version_info (); exit 0), "Print version and exit");
     ("--legacy-config-path", Arg.Unit (fun () -> legacy_config_path := true),
     (Printf.sprintf "Load config file from legacy path %s" defaults.legacy_config_path));
+    ("--reload-active-config", Arg.Unit (fun () -> reload_active_config := true), "Reload active config file");
    ]
 let usage = "Usage: " ^ Sys.argv.(0) ^ " [options]"
 
@@ -113,11 +115,10 @@ let enter_conf_mode req token =
         if req.exclusive then (conf_mode_lock := Some session.client_pid; aux token session)
         else aux token session
 
-let exit_conf_mode world token =
+let exit_conf_mode _world token =
     let open Session in
     let session = Hashtbl.find sessions token in
     let session = {session with
-        proposed_config=world.running_config;
         changeset = [];
         modified = false}
     in Hashtbl.replace sessions token session;
@@ -186,6 +187,23 @@ let show_config world token (req: request_show_config) =
         let conf_str = Session.show_config world (find_session token) req.path fmt in
         {response_tmpl with output=(Some conf_str)}
     with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
+
+let show_sessions _world token (req: request_show_sessions) =
+    let g d s =
+        (Session.session_data_to_yojson d) :: s
+    in
+    let f k d s =
+        match k with
+        | t when t = token ->
+            if req.exclude_self then s
+            else g d s
+        | _ ->
+            if req.exclude_other then s
+            else g d s
+    in
+    let tmp = Hashtbl.fold f sessions [] in
+    let res = Yojson.Safe.to_string @@ `List tmp in
+    {response_tmpl with output=(Some res)}
 
 let validate world token (req: request_validate) =
     try
@@ -274,16 +292,13 @@ let commit world token (req: request_commit) =
     let proposed_config = Session.get_proposed_config world s in
     let req_dry_run = Option.value req.dry_run ~default:false in
     let commit_data =
-        Session.prepare_commit
-        ~dry_run:req_dry_run
-        world
-        proposed_config
-        token
-        s.client_pid
-        s.client_sudo_user
-        s.client_user
+        Session.prepare_commit ~dry_run:req_dry_run world s proposed_config token
     in
-    let%lwt received_commit_data = VC.do_commit commit_data in
+    match commit_data with
+    | Error msg ->
+        Lwt.return {response_tmpl with status=Internal_error; error=(Some msg)}
+    | Ok c_data ->
+    let%lwt received_commit_data = VC.do_commit c_data in
     let%lwt result_commit_data =
         Lwt.return (CC.commit_update received_commit_data)
     in
@@ -314,11 +329,24 @@ let commit world token (req: request_commit) =
                         world.Session.running_config
                         post_proposed;
                         aux_changeset = []; }
-                in Hashtbl.replace sessions token session
+                in
+                Hashtbl.replace sessions token session
             else ();
 
-            let success, msg_str =
+            let write_msg =
+                if not req_dry_run then
+                    match Session.write_running_cache world with
+                    | Ok () -> ""
+                    | Error msg -> msg
+                else ""
+            in
+            let success, result_msg =
                 result_commit_data.result.success, result_commit_data.result.out
+            in
+            let msg_str =
+                match write_msg with
+                | "" -> result_msg
+                | _ -> Printf.sprintf "%s\n %s" result_msg write_msg
             in
             match success with
             | true -> Lwt.return {response_tmpl with status=Success; output=(Some msg_str)}
@@ -385,6 +413,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Load r -> load world t r
                     | Some t, Merge r -> merge world t r
                     | Some t, Save r -> save world t r
+                    | Some t, Show_sessions r -> show_sessions world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end
@@ -426,6 +455,14 @@ let read_reference_tree file =
     | Ok r -> r
     | Error s -> Startup.panic s
 
+let init_write_cache world =
+    (* initial cache of running config; this will be unnecessary once
+       vyconfd is started at boot *)
+    let res = Session.write_running_cache world in
+    match res with
+    | Ok _ ->  ()
+    | Error msg -> (Lwt_log.error msg) |> Lwt.ignore_result
+
 let make_world config dirs =
     let open Session in
     (* the reference_tree json file is generated at vyos-1x build time *)
@@ -446,8 +483,23 @@ let () =
       | false -> (FP.concat vc.config_dir vc.primary_config)
   in
   let failsafe_config = (FP.concat vc.config_dir vc.fallback_config) in
+  let restart_cache = (FP.concat vc.session_dir vc.running_cache) in
   let config =
-      Startup.load_config_failsafe primary_config failsafe_config
+      match !reload_active_config with
+      | true -> let res = Startup.load_config_cache restart_cache in
+                begin
+                match res with
+                | Ok c -> c
+                | Error msg ->
+                    let () = (Lwt_log.error msg) |> Lwt.ignore_result in
+                    Startup.load_config_failsafe primary_config failsafe_config
+                end
+      | false -> Startup.load_config_failsafe primary_config failsafe_config
   in
   let world = Session.{world with running_config=config} in
+  let () =
+      match !reload_active_config with
+      | true -> ()
+      | false -> init_write_cache world
+  in
   Lwt_main.run @@ main_loop !basepath world ()
