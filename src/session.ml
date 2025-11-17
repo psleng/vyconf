@@ -197,15 +197,17 @@ let set w s path =
     if Vyos1x.Util.is_empty path
     then raise (Session_error "Path is empty")
     else
-    let _ = validate w s path in
-    let changeset' = update_set w s.changeset path in
+    let path_total = s.edit_level @ path in
+    let _ = validate w s path_total in
+    let changeset' = update_set w s.changeset path_total in
     { s with changeset = changeset' }
 
 let delete w s path =
     if Vyos1x.Util.is_empty path
     then raise (Session_error "Path is empty")
     else
-    let changeset' = update_delete w s.changeset path in
+    let path_total = s.edit_level @ path in
+    let changeset' = update_delete w s.changeset path_total in
     { s with changeset = changeset' }
 
 let aux_set w s path name tagval =
@@ -559,14 +561,16 @@ let exists w s path =
     (VT.exists[@alert "-exn"]) c path
 
 let show_config w s path =
+    let path_total = s.edit_level @ path in
     let proposed_config = get_proposed_config w s in
-    if (path <> []) && not ((VT.exists[@alert "-exn"]) proposed_config path)
+    if not (Vyos1x.Util.is_empty path_total) &&
+       not ((VT.exists[@alert "-exn"]) proposed_config path_total)
     then raise (Session_error "Path does not exist")
     else
     let res =
         (CD.diff_show[@alert "-exn"])
         w.reference_tree
-        path
+        path_total
         w.running_config
         proposed_config
     in res
