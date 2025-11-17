@@ -159,6 +159,26 @@ type request_show_sessions = {
   exclude_other : bool;
 }
 
+type request_set_edit_level = {
+  path : string list;
+}
+
+type request_set_edit_level_up = {
+  dummy : int32 option;
+}
+
+type request_reset_edit_level = {
+  dummy : int32 option;
+}
+
+type request_get_edit_level = {
+  dummy : int32 option;
+}
+
+type request_edit_level_root = {
+  dummy : int32 option;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -192,6 +212,11 @@ type request =
   | Aux_set of request_aux_set
   | Aux_delete of request_aux_delete
   | Show_sessions of request_show_sessions
+  | Set_edit_level of request_set_edit_level
+  | Set_edit_level_up of request_set_edit_level_up
+  | Reset_edit_level of request_reset_edit_level
+  | Get_edit_level of request_get_edit_level
+  | Edit_level_root of request_edit_level_root
 
 type request_envelope = {
   token : string option;
@@ -457,6 +482,36 @@ let rec default_request_show_sessions
   () : request_show_sessions  = {
   exclude_self;
   exclude_other;
+}
+
+let rec default_request_set_edit_level 
+  ?path:((path:string list) = [])
+  () : request_set_edit_level  = {
+  path;
+}
+
+let rec default_request_set_edit_level_up 
+  ?dummy:((dummy:int32 option) = None)
+  () : request_set_edit_level_up  = {
+  dummy;
+}
+
+let rec default_request_reset_edit_level 
+  ?dummy:((dummy:int32 option) = None)
+  () : request_reset_edit_level  = {
+  dummy;
+}
+
+let rec default_request_get_edit_level 
+  ?dummy:((dummy:int32 option) = None)
+  () : request_get_edit_level  = {
+  dummy;
+}
+
+let rec default_request_edit_level_root 
+  ?dummy:((dummy:int32 option) = None)
+  () : request_edit_level_root  = {
+  dummy;
 }
 
 let rec default_request (): request = Prompt
@@ -773,6 +828,46 @@ let default_request_show_sessions_mutable () : request_show_sessions_mutable = {
   exclude_other = false;
 }
 
+type request_set_edit_level_mutable = {
+  mutable path : string list;
+}
+
+let default_request_set_edit_level_mutable () : request_set_edit_level_mutable = {
+  path = [];
+}
+
+type request_set_edit_level_up_mutable = {
+  mutable dummy : int32 option;
+}
+
+let default_request_set_edit_level_up_mutable () : request_set_edit_level_up_mutable = {
+  dummy = None;
+}
+
+type request_reset_edit_level_mutable = {
+  mutable dummy : int32 option;
+}
+
+let default_request_reset_edit_level_mutable () : request_reset_edit_level_mutable = {
+  dummy = None;
+}
+
+type request_get_edit_level_mutable = {
+  mutable dummy : int32 option;
+}
+
+let default_request_get_edit_level_mutable () : request_get_edit_level_mutable = {
+  dummy = None;
+}
+
+type request_edit_level_root_mutable = {
+  mutable dummy : int32 option;
+}
+
+let default_request_edit_level_root_mutable () : request_edit_level_root_mutable = {
+  dummy = None;
+}
+
 type request_envelope_mutable = {
   mutable token : string option;
   mutable request : request;
@@ -1032,6 +1127,36 @@ let rec pp_request_show_sessions fmt (v:request_show_sessions) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
+let rec pp_request_set_edit_level fmt (v:request_set_edit_level) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "path" (Pbrt.Pp.pp_list Pbrt.Pp.pp_string) fmt v.path;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_set_edit_level_up fmt (v:request_set_edit_level_up) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_reset_edit_level fmt (v:request_reset_edit_level) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_get_edit_level fmt (v:request_get_edit_level) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
+let rec pp_request_edit_level_root fmt (v:request_edit_level_root) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "dummy" (Pbrt.Pp.pp_option Pbrt.Pp.pp_int32) fmt v.dummy;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
 let rec pp_request fmt (v:request) =
   match v with
   | Prompt  -> Format.fprintf fmt "Prompt"
@@ -1066,6 +1191,11 @@ let rec pp_request fmt (v:request) =
   | Aux_set x -> Format.fprintf fmt "@[<hv2>Aux_set(@,%a)@]" pp_request_aux_set x
   | Aux_delete x -> Format.fprintf fmt "@[<hv2>Aux_delete(@,%a)@]" pp_request_aux_delete x
   | Show_sessions x -> Format.fprintf fmt "@[<hv2>Show_sessions(@,%a)@]" pp_request_show_sessions x
+  | Set_edit_level x -> Format.fprintf fmt "@[<hv2>Set_edit_level(@,%a)@]" pp_request_set_edit_level x
+  | Set_edit_level_up x -> Format.fprintf fmt "@[<hv2>Set_edit_level_up(@,%a)@]" pp_request_set_edit_level_up x
+  | Reset_edit_level x -> Format.fprintf fmt "@[<hv2>Reset_edit_level(@,%a)@]" pp_request_reset_edit_level x
+  | Get_edit_level x -> Format.fprintf fmt "@[<hv2>Get_edit_level(@,%a)@]" pp_request_get_edit_level x
+  | Edit_level_root x -> Format.fprintf fmt "@[<hv2>Edit_level_root(@,%a)@]" pp_request_edit_level_root x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
   let pp_i fmt () =
@@ -1450,6 +1580,49 @@ let rec encode_pb_request_show_sessions (v:request_show_sessions) encoder =
   Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
   ()
 
+let rec encode_pb_request_set_edit_level (v:request_set_edit_level) encoder = 
+  Pbrt.List_util.rev_iter_with (fun x encoder -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  ) v.path encoder;
+  ()
+
+let rec encode_pb_request_set_edit_level_up (v:request_set_edit_level_up) encoder = 
+  begin match v.dummy with
+  | Some x -> 
+    Pbrt.Encoder.int32_as_varint x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  | None -> ();
+  end;
+  ()
+
+let rec encode_pb_request_reset_edit_level (v:request_reset_edit_level) encoder = 
+  begin match v.dummy with
+  | Some x -> 
+    Pbrt.Encoder.int32_as_varint x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  | None -> ();
+  end;
+  ()
+
+let rec encode_pb_request_get_edit_level (v:request_get_edit_level) encoder = 
+  begin match v.dummy with
+  | Some x -> 
+    Pbrt.Encoder.int32_as_varint x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  | None -> ();
+  end;
+  ()
+
+let rec encode_pb_request_edit_level_root (v:request_edit_level_root) encoder = 
+  begin match v.dummy with
+  | Some x -> 
+    Pbrt.Encoder.int32_as_varint x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Varint encoder; 
+  | None -> ();
+  end;
+  ()
+
 let rec encode_pb_request (v:request) encoder = 
   begin match v with
   | Prompt ->
@@ -1548,6 +1721,21 @@ let rec encode_pb_request (v:request) encoder =
   | Show_sessions x ->
     Pbrt.Encoder.nested encode_pb_request_show_sessions x encoder;
     Pbrt.Encoder.key 32 Pbrt.Bytes encoder; 
+  | Set_edit_level x ->
+    Pbrt.Encoder.nested encode_pb_request_set_edit_level x encoder;
+    Pbrt.Encoder.key 33 Pbrt.Bytes encoder; 
+  | Set_edit_level_up x ->
+    Pbrt.Encoder.nested encode_pb_request_set_edit_level_up x encoder;
+    Pbrt.Encoder.key 34 Pbrt.Bytes encoder; 
+  | Reset_edit_level x ->
+    Pbrt.Encoder.nested encode_pb_request_reset_edit_level x encoder;
+    Pbrt.Encoder.key 35 Pbrt.Bytes encoder; 
+  | Get_edit_level x ->
+    Pbrt.Encoder.nested encode_pb_request_get_edit_level x encoder;
+    Pbrt.Encoder.key 36 Pbrt.Bytes encoder; 
+  | Edit_level_root x ->
+    Pbrt.Encoder.nested encode_pb_request_edit_level_root x encoder;
+    Pbrt.Encoder.key 37 Pbrt.Bytes encoder; 
   end
 
 let rec encode_pb_request_envelope (v:request_envelope) encoder = 
@@ -2379,6 +2567,97 @@ let rec decode_pb_request_show_sessions d =
     exclude_other = v.exclude_other;
   } : request_show_sessions)
 
+let rec decode_pb_request_set_edit_level d =
+  let v = default_request_set_edit_level_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+      v.path <- List.rev v.path;
+    ); continue__ := false
+    | Some (1, Pbrt.Bytes) -> begin
+      v.path <- (Pbrt.Decoder.string d) :: v.path;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_set_edit_level), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    path = v.path;
+  } : request_set_edit_level)
+
+let rec decode_pb_request_set_edit_level_up d =
+  let v = default_request_set_edit_level_up_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.dummy <- Some (Pbrt.Decoder.int32_as_varint d);
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_set_edit_level_up), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    dummy = v.dummy;
+  } : request_set_edit_level_up)
+
+let rec decode_pb_request_reset_edit_level d =
+  let v = default_request_reset_edit_level_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.dummy <- Some (Pbrt.Decoder.int32_as_varint d);
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_reset_edit_level), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    dummy = v.dummy;
+  } : request_reset_edit_level)
+
+let rec decode_pb_request_get_edit_level d =
+  let v = default_request_get_edit_level_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.dummy <- Some (Pbrt.Decoder.int32_as_varint d);
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_get_edit_level), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    dummy = v.dummy;
+  } : request_get_edit_level)
+
+let rec decode_pb_request_edit_level_root d =
+  let v = default_request_edit_level_root_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Varint) -> begin
+      v.dummy <- Some (Pbrt.Decoder.int32_as_varint d);
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_edit_level_root), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    dummy = v.dummy;
+  } : request_edit_level_root)
+
 let rec decode_pb_request d = 
   let rec loop () = 
     let ret:request = match Pbrt.Decoder.key d with
@@ -2424,6 +2703,11 @@ let rec decode_pb_request d =
       | Some (30, _) -> (Aux_set (decode_pb_request_aux_set (Pbrt.Decoder.nested d)) : request) 
       | Some (31, _) -> (Aux_delete (decode_pb_request_aux_delete (Pbrt.Decoder.nested d)) : request) 
       | Some (32, _) -> (Show_sessions (decode_pb_request_show_sessions (Pbrt.Decoder.nested d)) : request) 
+      | Some (33, _) -> (Set_edit_level (decode_pb_request_set_edit_level (Pbrt.Decoder.nested d)) : request) 
+      | Some (34, _) -> (Set_edit_level_up (decode_pb_request_set_edit_level_up (Pbrt.Decoder.nested d)) : request) 
+      | Some (35, _) -> (Reset_edit_level (decode_pb_request_reset_edit_level (Pbrt.Decoder.nested d)) : request) 
+      | Some (36, _) -> (Get_edit_level (decode_pb_request_get_edit_level (Pbrt.Decoder.nested d)) : request) 
+      | Some (37, _) -> (Edit_level_root (decode_pb_request_edit_level_root (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 
         loop () 
