@@ -181,3 +181,43 @@ let reload_reftree ?(on_behalf_of=None) client =
     | Success -> Ok "" |> Lwt.return
     | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
     | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let set_edit_level client path =
+    let req = Set_edit_level {path=path;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> unwrap resp.output |> Lwt.return
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let set_edit_level_up client =
+    let req = Set_edit_level_up {dummy=None;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> unwrap resp.output |> Lwt.return
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let reset_edit_level client =
+    let req = Reset_edit_level {dummy=None;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> unwrap resp.output |> Lwt.return
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let get_edit_level client =
+    let req = Get_edit_level {dummy=None;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> unwrap resp.output |> Lwt.return
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let edit_level_root client =
+    let req = Edit_level_root {dummy=None;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> Lwt.return (Ok "")
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
