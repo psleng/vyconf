@@ -56,6 +56,13 @@
  (preprocess (pps lwt_ppx)))
 
 (executable
+ (name vyconf_cli_compat)
+ (public_name vyconf_cli_compat)
+ (modules vyconf_cli_compat)
+ (libraries vyconfd_client)
+ (preprocess (pps lwt_ppx)))
+
+(executable
  (name validate)
  (public_name validate)
  (modules validate)
