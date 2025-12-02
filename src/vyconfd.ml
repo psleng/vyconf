@@ -183,8 +183,7 @@ let list_children world token (req: request_list_children) =
 
 let show_config world token (req: request_show_config) =
     try
-        let fmt = Option.value req.format ~default:Curly in
-        let conf_str = Session.show_config world (find_session token) req.path fmt in
+        let conf_str = Session.show_config world (find_session token) req.path in
         {response_tmpl with output=(Some conf_str)}
     with Session.Session_error msg -> {response_tmpl with status=Fail; error=(Some msg)}
 
@@ -363,6 +362,51 @@ let reload_reftree world (_req: request_reload_reftree) =
         {response_tmpl with status=Success}
     | Error s -> {response_tmpl with status=Fail; error=(Some s)}
 
+let set_edit_level world token (req: request_set_edit_level) =
+    let s = find_session token in
+    try
+        let session, edit_env =
+            Session.set_edit_level world s req.path
+        in
+        Hashtbl.replace sessions token session;
+        {response_tmpl with output=(Some edit_env)}
+    with Session.Session_error msg ->
+        {response_tmpl with status=Fail; error=(Some msg)}
+
+let set_edit_level_up world token (_req: request_set_edit_level_up) =
+    let s = find_session token in
+    try
+        let session, edit_env =
+            Session.set_edit_level_up world s
+        in
+        Hashtbl.replace sessions token session;
+        {response_tmpl with output=(Some edit_env)}
+    with Session.Session_error msg ->
+        {response_tmpl with status=Fail; error=(Some msg)}
+
+let reset_edit_level world token (_req: request_reset_edit_level) =
+    let s = find_session token in
+    try
+        let session, edit_env =
+            Session.reset_edit_level world s
+        in
+        Hashtbl.replace sessions token session;
+        {response_tmpl with output=(Some edit_env)}
+    with Session.Session_error msg ->
+        {response_tmpl with status=Fail; error=(Some msg)}
+
+let get_edit_level world token (_req: request_get_edit_level) =
+    let s = find_session token in
+    try
+        let edit_env = Session.get_edit_level world s in
+        {response_tmpl with output=(Some edit_env)}
+    with Session.Session_error msg ->
+        {response_tmpl with status=Fail; error=(Some msg)}
+
+let edit_level_root world token (_req: request_edit_level_root) =
+    if Session.edit_level_root world (find_session token) then response_tmpl
+    else {response_tmpl with status=Fail}
+
 let send_response oc resp =
     let enc = Pbrt.Encoder.create () in
     let%lwt () = encode_pb_response resp enc |> return in
@@ -414,6 +458,11 @@ let rec handle_connection world ic oc () =
                     | Some t, Merge r -> merge world t r
                     | Some t, Save r -> save world t r
                     | Some t, Show_sessions r -> show_sessions world t r
+                    | Some t, Set_edit_level r -> set_edit_level world t r
+                    | Some t, Set_edit_level_up r -> set_edit_level_up world t r
+                    | Some t, Reset_edit_level r -> reset_edit_level world t r
+                    | Some t, Get_edit_level r -> get_edit_level world t r
+                    | Some t, Edit_level_root r -> edit_level_root world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end

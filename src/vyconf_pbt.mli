@@ -166,6 +166,26 @@ type request_show_sessions = {
   exclude_other : bool;
 }
 
+type request_set_edit_level = {
+  path : string list;
+}
+
+type request_set_edit_level_up = {
+  dummy : int32 option;
+}
+
+type request_reset_edit_level = {
+  dummy : int32 option;
+}
+
+type request_get_edit_level = {
+  dummy : int32 option;
+}
+
+type request_edit_level_root = {
+  dummy : int32 option;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -199,6 +219,11 @@ type request =
   | Aux_set of request_aux_set
   | Aux_delete of request_aux_delete
   | Show_sessions of request_show_sessions
+  | Set_edit_level of request_set_edit_level
+  | Set_edit_level_up of request_set_edit_level_up
+  | Reset_edit_level of request_reset_edit_level
+  | Get_edit_level of request_get_edit_level
+  | Edit_level_root of request_edit_level_root
 
 type request_envelope = {
   token : string option;
@@ -445,6 +470,36 @@ val default_request_show_sessions :
   request_show_sessions
 (** [default_request_show_sessions ()] is the default value for type [request_show_sessions] *)
 
+val default_request_set_edit_level : 
+  ?path:string list ->
+  unit ->
+  request_set_edit_level
+(** [default_request_set_edit_level ()] is the default value for type [request_set_edit_level] *)
+
+val default_request_set_edit_level_up : 
+  ?dummy:int32 option ->
+  unit ->
+  request_set_edit_level_up
+(** [default_request_set_edit_level_up ()] is the default value for type [request_set_edit_level_up] *)
+
+val default_request_reset_edit_level : 
+  ?dummy:int32 option ->
+  unit ->
+  request_reset_edit_level
+(** [default_request_reset_edit_level ()] is the default value for type [request_reset_edit_level] *)
+
+val default_request_get_edit_level : 
+  ?dummy:int32 option ->
+  unit ->
+  request_get_edit_level
+(** [default_request_get_edit_level ()] is the default value for type [request_get_edit_level] *)
+
+val default_request_edit_level_root : 
+  ?dummy:int32 option ->
+  unit ->
+  request_edit_level_root
+(** [default_request_edit_level_root ()] is the default value for type [request_edit_level_root] *)
+
 val default_request : unit -> request
 (** [default_request ()] is the default value for type [request] *)
 
@@ -572,6 +627,21 @@ val pp_request_reload_reftree : Format.formatter -> request_reload_reftree -> un
 val pp_request_show_sessions : Format.formatter -> request_show_sessions -> unit 
 (** [pp_request_show_sessions v] formats v *)
 
+val pp_request_set_edit_level : Format.formatter -> request_set_edit_level -> unit 
+(** [pp_request_set_edit_level v] formats v *)
+
+val pp_request_set_edit_level_up : Format.formatter -> request_set_edit_level_up -> unit 
+(** [pp_request_set_edit_level_up v] formats v *)
+
+val pp_request_reset_edit_level : Format.formatter -> request_reset_edit_level -> unit 
+(** [pp_request_reset_edit_level v] formats v *)
+
+val pp_request_get_edit_level : Format.formatter -> request_get_edit_level -> unit 
+(** [pp_request_get_edit_level v] formats v *)
+
+val pp_request_edit_level_root : Format.formatter -> request_edit_level_root -> unit 
+(** [pp_request_edit_level_root v] formats v *)
+
 val pp_request : Format.formatter -> request -> unit 
 (** [pp_request v] formats v *)
 
@@ -689,6 +759,21 @@ val encode_pb_request_reload_reftree : request_reload_reftree -> Pbrt.Encoder.t 
 val encode_pb_request_show_sessions : request_show_sessions -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_show_sessions v encoder] encodes [v] with the given [encoder] *)
 
+val encode_pb_request_set_edit_level : request_set_edit_level -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_set_edit_level v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_set_edit_level_up : request_set_edit_level_up -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_set_edit_level_up v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_reset_edit_level : request_reset_edit_level -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_reset_edit_level v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_get_edit_level : request_get_edit_level -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_get_edit_level v encoder] encodes [v] with the given [encoder] *)
+
+val encode_pb_request_edit_level_root : request_edit_level_root -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_edit_level_root v encoder] encodes [v] with the given [encoder] *)
+
 val encode_pb_request : request -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request v encoder] encodes [v] with the given [encoder] *)
 
@@ -805,6 +890,21 @@ val decode_pb_request_reload_reftree : Pbrt.Decoder.t -> request_reload_reftree
 
 val decode_pb_request_show_sessions : Pbrt.Decoder.t -> request_show_sessions
 (** [decode_pb_request_show_sessions decoder] decodes a [request_show_sessions] binary value from [decoder] *)
+
+val decode_pb_request_set_edit_level : Pbrt.Decoder.t -> request_set_edit_level
+(** [decode_pb_request_set_edit_level decoder] decodes a [request_set_edit_level] binary value from [decoder] *)
+
+val decode_pb_request_set_edit_level_up : Pbrt.Decoder.t -> request_set_edit_level_up
+(** [decode_pb_request_set_edit_level_up decoder] decodes a [request_set_edit_level_up] binary value from [decoder] *)
+
+val decode_pb_request_reset_edit_level : Pbrt.Decoder.t -> request_reset_edit_level
+(** [decode_pb_request_reset_edit_level decoder] decodes a [request_reset_edit_level] binary value from [decoder] *)
+
+val decode_pb_request_get_edit_level : Pbrt.Decoder.t -> request_get_edit_level
+(** [decode_pb_request_get_edit_level decoder] decodes a [request_get_edit_level] binary value from [decoder] *)
+
+val decode_pb_request_edit_level_root : Pbrt.Decoder.t -> request_edit_level_root
+(** [decode_pb_request_edit_level_root decoder] decodes a [request_edit_level_root] binary value from [decoder] *)
 
 val decode_pb_request : Pbrt.Decoder.t -> request
 (** [decode_pb_request decoder] decodes a [request] binary value from [decoder] *)

@@ -37,3 +37,13 @@ val discard : t -> (string, string) result Lwt.t
 val commit : t -> (string, string) result Lwt.t
 
 val reload_reftree : ?on_behalf_of:(int option) -> t -> (string, string) result Lwt.t
+
+val set_edit_level : t -> string list -> (string, string) result Lwt.t
+
+val set_edit_level_up : t -> (string, string) result Lwt.t
+
+val reset_edit_level : t -> (string, string) result Lwt.t
+
+val get_edit_level : t -> (string, string) result Lwt.t
+
+val edit_level_root : t -> (string, string) result Lwt.t

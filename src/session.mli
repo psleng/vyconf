@@ -20,6 +20,7 @@ type session_data = {
     conf_mode: bool;
     changeset: cfg_op list;
     mutable aux_changeset: aux_op list;
+    edit_level: string list;
     client_app: string;
     client_pid: int32;
     client_user: string;
@@ -49,6 +50,16 @@ val aux_delete : world -> session_data -> string list -> string -> string option
 val get_proposed_config : world -> session_data -> Vyos1x.Config_tree.t
 
 val discard : world -> session_data -> session_data
+
+val set_edit_level : world -> session_data -> string list -> session_data * string
+
+val set_edit_level_up : world -> session_data -> session_data * string
+
+val get_edit_level : world -> session_data -> string
+
+val reset_edit_level : world -> session_data -> session_data * string
+
+val edit_level_root : world -> session_data -> bool
 
 val session_changed : world -> session_data -> bool
 
@@ -80,4 +91,4 @@ val get_config : world -> session_data -> string -> string
 
 val cleanup_config : world -> string -> unit
 
-val show_config : world -> session_data -> string list -> Vyconf_connect.Vyconf_pbt.request_config_format -> string
+val show_config : world -> session_data -> string list -> string
