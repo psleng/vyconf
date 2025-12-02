@@ -34,6 +34,7 @@ type session_data = {
     conf_mode: bool;
     changeset: cfg_op list;
     mutable aux_changeset: aux_op list;
+    edit_level: string list;
     client_app: string;
     client_pid: int32;
     client_user: string;
@@ -45,6 +46,7 @@ let make _world client_app sudo_user user pid = {
     conf_mode = false;
     changeset = [];
     aux_changeset = [];
+    edit_level = [];
     client_app = client_app;
     client_user = user;
     client_sudo_user = sudo_user;
@@ -195,15 +197,17 @@ let set w s path =
     if Vyos1x.Util.is_empty path
     then raise (Session_error "Path is empty")
     else
-    let _ = validate w s path in
-    let changeset' = update_set w s.changeset path in
+    let path_total = s.edit_level @ path in
+    let _ = validate w s path_total in
+    let changeset' = update_set w s.changeset path_total in
     { s with changeset = changeset' }
 
 let delete w s path =
     if Vyos1x.Util.is_empty path
     then raise (Session_error "Path is empty")
     else
-    let changeset' = update_delete w s.changeset path in
+    let path_total = s.edit_level @ path in
+    let changeset' = update_delete w s.changeset path_total in
     { s with changeset = changeset' }
 
 let aux_set w s path name tagval =
@@ -261,6 +265,63 @@ let aux_delete w s path name tagval =
 
 let discard _w s =
     { s with changeset = []; }
+
+let edit_env_str s =
+    (* To maintain consistency with classic CLI, we return env variable for
+       PS1 on changes to edit level.
+     *)
+    let ps1 =
+    match s.edit_level with
+    | [] ->
+        "[edit]\\n\\u@\\H${VRF:+(vrf:$VRF)}${NETNS:+(ns:$NETNS)}# "
+    | _ as p ->
+        Printf.sprintf
+        "[edit %s]\\n\\u@\\H${VRF:+(vrf:$VRF)}${NETNS:+(ns:$NETNS)}# "
+        (Vyos1x.Util.string_of_list p)
+    in
+    Printf.sprintf "export PS1='%s';" ps1
+
+let set_edit_level w s path =
+    let current_level = s.edit_level in
+    let new_level = current_level @ path in
+    let result = RT.allowed_edit_level w.reference_tree new_level in
+    match result with
+    | Ok () ->
+        let c = get_proposed_config w s in
+        let s' =
+            if not ((VT.exists[@alert "-exn"]) c path) then
+                set w s path
+            else s
+        in
+        let session = { s' with edit_level = new_level; } in
+        session, (edit_env_str session)
+    | Error msg ->
+        raise (Session_error msg)
+
+let set_edit_level_up w s =
+    let current_level = s.edit_level in
+    let new_level =
+        if Vyos1x.Util.is_empty current_level then
+            current_level
+        else
+        let up = Vyos1x.Util.drop_last current_level in
+        match RT.allowed_edit_level w.reference_tree up with
+        | Ok () -> up
+        | Error _ -> (* tag_value *)
+            Vyos1x.Util.drop_last up
+    in
+    let session = { s with edit_level = new_level; }
+    in session, (edit_env_str session)
+
+let get_edit_level _w s =
+    Vyos1x.Util.string_of_list s.edit_level
+
+let reset_edit_level _w s =
+    let session = { s with edit_level = []; }
+    in session, (edit_env_str session)
+
+let edit_level_root _w s =
+    Vyos1x.Util.is_empty s.edit_level
 
 let session_changed w s =
     (* structural equality test requires consistent ordering, which is
@@ -499,29 +560,17 @@ let exists w s path =
     else let c = get_proposed_config w s in
     (VT.exists[@alert "-exn"]) c path
 
-let show_config w s path fmt =
-    (* alert exn VT.exists:
-        [Vytree.Empty_path] non-empty in conditional
-       alert exn CT.render_at_level:
-        [Vytree.Nonexistent_path] checked by VT.exists
-       alert exn VT.get:
-        [Vytree.Empty_path] non-empty in pattern match
-        [Vytree.Nonexistent_path] checked by VT.exists
-     *)
-    let open Vyconf_connect.Vyconf_pbt in
-    let c = get_proposed_config w s in
-    if (path <> []) && not ((VT.exists[@alert "-exn"]) c path) then
-        raise (Session_error ("Path does not exist")) 
+let show_config w s path =
+    let path_total = s.edit_level @ path in
+    let proposed_config = get_proposed_config w s in
+    if not (Vyos1x.Util.is_empty path_total) &&
+       not ((VT.exists[@alert "-exn"]) proposed_config path_total)
+    then raise (Session_error "Path does not exist")
     else
-        let node = c in
-        match fmt with
-        | Curly -> (CT.render_at_level[@alert "-exn"]) node path
-        | Json ->
-            let node =
-                begin
-                match path with
-                | [] -> c
-                | _ as ps -> (VT.get[@alert "-exn"]) c ps
-                end
-            in
-            CT.to_yojson node |> Yojson.Safe.pretty_to_string
+    let res =
+        (CD.diff_show[@alert "-exn"])
+        w.reference_tree
+        path_total
+        w.running_config
+        proposed_config
+    in res

@@ -165,6 +165,26 @@ message Request {
     required bool exclude_other = 2;
   }
 
+  message SetEditLevel {
+    repeated string path = 1;
+  }
+
+  message SetEditLevelUp {
+    optional int32 dummy = 1;
+  }
+
+  message ResetEditLevel {
+    optional int32 dummy = 1;
+  }
+
+  message GetEditLevel {
+    optional int32 dummy = 1;
+  }
+
+  message EditLevelRoot {
+    optional int32 dummy = 1;
+  }
+
 
   oneof msg {
     Prompt prompt = 1;
@@ -199,6 +219,11 @@ message Request {
     AuxSet aux_set = 30;
     AuxDelete aux_delete = 31;
     ShowSessions show_sessions = 32;
+    SetEditLevel set_edit_level = 33;
+    SetEditLevelUp set_edit_level_up = 34;
+    ResetEditLevel reset_edit_level = 35;
+    GetEditLevel get_edit_level = 36;
+    EditLevelRoot edit_level_root = 37;
   }
 }
 
