@@ -179,6 +179,10 @@ type request_edit_level_root = {
   dummy : int32 option;
 }
 
+type request_config_unsaved = {
+  file : string option;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -217,6 +221,7 @@ type request =
   | Reset_edit_level of request_reset_edit_level
   | Get_edit_level of request_get_edit_level
   | Edit_level_root of request_edit_level_root
+  | Config_unsaved of request_config_unsaved
 
 type request_envelope = {
   token : string option;
@@ -512,6 +517,12 @@ let rec default_request_edit_level_root
   ?dummy:((dummy:int32 option) = None)
   () : request_edit_level_root  = {
   dummy;
+}
+
+let rec default_request_config_unsaved 
+  ?file:((file:string option) = None)
+  () : request_config_unsaved  = {
+  file;
 }
 
 let rec default_request (): request = Prompt
@@ -868,6 +879,14 @@ let default_request_edit_level_root_mutable () : request_edit_level_root_mutable
   dummy = None;
 }
 
+type request_config_unsaved_mutable = {
+  mutable file : string option;
+}
+
+let default_request_config_unsaved_mutable () : request_config_unsaved_mutable = {
+  file = None;
+}
+
 type request_envelope_mutable = {
   mutable token : string option;
   mutable request : request;
@@ -1157,6 +1176,12 @@ let rec pp_request_edit_level_root fmt (v:request_edit_level_root) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
+let rec pp_request_config_unsaved fmt (v:request_config_unsaved) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "file" (Pbrt.Pp.pp_option Pbrt.Pp.pp_string) fmt v.file;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
 let rec pp_request fmt (v:request) =
   match v with
   | Prompt  -> Format.fprintf fmt "Prompt"
@@ -1196,6 +1221,7 @@ let rec pp_request fmt (v:request) =
   | Reset_edit_level x -> Format.fprintf fmt "@[<hv2>Reset_edit_level(@,%a)@]" pp_request_reset_edit_level x
   | Get_edit_level x -> Format.fprintf fmt "@[<hv2>Get_edit_level(@,%a)@]" pp_request_get_edit_level x
   | Edit_level_root x -> Format.fprintf fmt "@[<hv2>Edit_level_root(@,%a)@]" pp_request_edit_level_root x
+  | Config_unsaved x -> Format.fprintf fmt "@[<hv2>Config_unsaved(@,%a)@]" pp_request_config_unsaved x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
   let pp_i fmt () =
@@ -1623,6 +1649,15 @@ let rec encode_pb_request_edit_level_root (v:request_edit_level_root) encoder =
   end;
   ()
 
+let rec encode_pb_request_config_unsaved (v:request_config_unsaved) encoder = 
+  begin match v.file with
+  | Some x -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  | None -> ();
+  end;
+  ()
+
 let rec encode_pb_request (v:request) encoder = 
   begin match v with
   | Prompt ->
@@ -1736,6 +1771,9 @@ let rec encode_pb_request (v:request) encoder =
   | Edit_level_root x ->
     Pbrt.Encoder.nested encode_pb_request_edit_level_root x encoder;
     Pbrt.Encoder.key 37 Pbrt.Bytes encoder; 
+  | Config_unsaved x ->
+    Pbrt.Encoder.nested encode_pb_request_config_unsaved x encoder;
+    Pbrt.Encoder.key 38 Pbrt.Bytes encoder; 
   end
 
 let rec encode_pb_request_envelope (v:request_envelope) encoder = 
@@ -2658,6 +2696,24 @@ let rec decode_pb_request_edit_level_root d =
     dummy = v.dummy;
   } : request_edit_level_root)
 
+let rec decode_pb_request_config_unsaved d =
+  let v = default_request_config_unsaved_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+    ); continue__ := false
+    | Some (1, Pbrt.Bytes) -> begin
+      v.file <- Some (Pbrt.Decoder.string d);
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_config_unsaved), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    file = v.file;
+  } : request_config_unsaved)
+
 let rec decode_pb_request d = 
   let rec loop () = 
     let ret:request = match Pbrt.Decoder.key d with
@@ -2708,6 +2764,7 @@ let rec decode_pb_request d =
       | Some (35, _) -> (Reset_edit_level (decode_pb_request_reset_edit_level (Pbrt.Decoder.nested d)) : request) 
       | Some (36, _) -> (Get_edit_level (decode_pb_request_get_edit_level (Pbrt.Decoder.nested d)) : request) 
       | Some (37, _) -> (Edit_level_root (decode_pb_request_edit_level_root (Pbrt.Decoder.nested d)) : request) 
+      | Some (38, _) -> (Config_unsaved (decode_pb_request_config_unsaved (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 
         loop () 

@@ -221,3 +221,11 @@ let edit_level_root client =
     | Success -> Lwt.return (Ok "")
     | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
     | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let config_unsaved client file =
+    let req = Config_unsaved {file=file;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> Lwt.return (Ok "")
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return

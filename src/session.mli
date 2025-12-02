@@ -69,6 +69,8 @@ val merge : world -> session_data -> string -> bool -> session_data
 
 val save : world -> session_data -> string -> session_data
 
+val config_unsaved : world -> session_data -> string -> string -> bool
+
 val get_value : world -> session_data -> string list -> string
 
 val get_values : world -> session_data -> string list -> string list

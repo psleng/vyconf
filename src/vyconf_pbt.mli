@@ -186,6 +186,10 @@ type request_edit_level_root = {
   dummy : int32 option;
 }
 
+type request_config_unsaved = {
+  file : string option;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -224,6 +228,7 @@ type request =
   | Reset_edit_level of request_reset_edit_level
   | Get_edit_level of request_get_edit_level
   | Edit_level_root of request_edit_level_root
+  | Config_unsaved of request_config_unsaved
 
 type request_envelope = {
   token : string option;
@@ -500,6 +505,12 @@ val default_request_edit_level_root :
   request_edit_level_root
 (** [default_request_edit_level_root ()] is the default value for type [request_edit_level_root] *)
 
+val default_request_config_unsaved : 
+  ?file:string option ->
+  unit ->
+  request_config_unsaved
+(** [default_request_config_unsaved ()] is the default value for type [request_config_unsaved] *)
+
 val default_request : unit -> request
 (** [default_request ()] is the default value for type [request] *)
 
@@ -642,6 +653,9 @@ val pp_request_get_edit_level : Format.formatter -> request_get_edit_level -> un
 val pp_request_edit_level_root : Format.formatter -> request_edit_level_root -> unit 
 (** [pp_request_edit_level_root v] formats v *)
 
+val pp_request_config_unsaved : Format.formatter -> request_config_unsaved -> unit 
+(** [pp_request_config_unsaved v] formats v *)
+
 val pp_request : Format.formatter -> request -> unit 
 (** [pp_request v] formats v *)
 
@@ -774,6 +788,9 @@ val encode_pb_request_get_edit_level : request_get_edit_level -> Pbrt.Encoder.t 
 val encode_pb_request_edit_level_root : request_edit_level_root -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_edit_level_root v encoder] encodes [v] with the given [encoder] *)
 
+val encode_pb_request_config_unsaved : request_config_unsaved -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_config_unsaved v encoder] encodes [v] with the given [encoder] *)
+
 val encode_pb_request : request -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request v encoder] encodes [v] with the given [encoder] *)
 
@@ -905,6 +922,9 @@ val decode_pb_request_get_edit_level : Pbrt.Decoder.t -> request_get_edit_level
 
 val decode_pb_request_edit_level_root : Pbrt.Decoder.t -> request_edit_level_root
 (** [decode_pb_request_edit_level_root decoder] decodes a [request_edit_level_root] binary value from [decoder] *)
+
+val decode_pb_request_config_unsaved : Pbrt.Decoder.t -> request_config_unsaved
+(** [decode_pb_request_config_unsaved decoder] decodes a [request_config_unsaved] binary value from [decoder] *)
 
 val decode_pb_request : Pbrt.Decoder.t -> request
 (** [decode_pb_request decoder] decodes a [request] binary value from [decoder] *)

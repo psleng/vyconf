@@ -407,6 +407,16 @@ let edit_level_root world token (_req: request_edit_level_root) =
     if Session.edit_level_root world (find_session token) then response_tmpl
     else {response_tmpl with status=Fail}
 
+let config_unsaved world token (req: request_config_unsaved) =
+    let saved_file =
+        match req.file with
+        | None -> defaults.legacy_config_path
+        | Some file -> file
+    in
+    if Session.config_unsaved world (find_session token) saved_file token
+    then response_tmpl
+    else {response_tmpl with status=Fail}
+
 let send_response oc resp =
     let enc = Pbrt.Encoder.create () in
     let%lwt () = encode_pb_response resp enc |> return in
@@ -463,6 +473,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Reset_edit_level r -> reset_edit_level world t r
                     | Some t, Get_edit_level r -> get_edit_level world t r
                     | Some t, Edit_level_root r -> edit_level_root world t r
+                    | Some t, Config_unsaved r -> config_unsaved world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end
