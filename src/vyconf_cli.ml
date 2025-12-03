@@ -38,7 +38,12 @@ let in_cli_config_session () =
     | None -> false
 
 let get_session () =
-    let pid = Int32.of_int (Unix.getppid()) in
+    let pid =
+        try (* set for config session *)
+            Int32.of_string (Sys.getenv "SESSION_PID")
+        with Not_found ->
+            Int32.of_int (Unix.getppid())
+    in
     let user =
         try Sys.getenv "USER"
         with Not_found -> ""
@@ -85,12 +90,30 @@ let main op path =
             close_session () |> Lwt.ignore_result
     in
     match result with
-    | Ok s -> let%lwt () = Lwt_io.write Lwt_io.stdout s in Lwt.return 0
-    | Error e -> let%lwt () = Lwt_io.write Lwt_io.stderr (Printf.sprintf "%s\n" e) in Lwt.return 1
+    | Ok s ->
+        begin
+        match s with
+        | "" -> Lwt.return 0
+        | _ ->
+        let%lwt () =
+            Lwt_io.write Lwt_io.stdout (Printf.sprintf "%s\n" s) in Lwt.return 0
+        end
+    | Error e ->
+        begin
+        match e with
+        | "" -> Lwt.return 1
+        | _ ->
+        let%lwt () =
+            Lwt_io.write Lwt_io.stderr (Printf.sprintf "%s\n" e) in Lwt.return 1
+        end
 
 let () =
     let path_list = Array.to_list (Array.sub Sys.argv 1 (Array.length Sys.argv - 1))
     in
     let op_str = FilePath.basename Sys.argv.(0) in
     let op = op_of_string op_str in
-    let result = Lwt_main.run (main op path_list) in exit result
+    match op, path_list with
+    | OpSet, [] | OpDelete, [] ->
+        let () = print_endline "Must specify config path" in exit 1
+    | _, _ ->
+        let result = Lwt_main.run (main op path_list) in exit result
