@@ -5,16 +5,12 @@ type op_t =
     | OpSet
     | OpDelete
     | OpDiscard
-    | OpShowConfig
-    | OpSessionChanged
 
 let op_of_string s =
     match s with
     | "vy_set" -> OpSet
     | "vy_delete" -> OpDelete
     | "vy_discard" -> OpDiscard
-    | "vy_show" -> OpShowConfig
-    | "vy_session_changed" -> OpSessionChanged
     | _ -> failwith (Printf.sprintf "Unknown operation %s" s)
 
 let config_format_of_string s =
@@ -80,8 +76,6 @@ let main op path =
         | OpSet -> set c path
         | OpDelete -> delete c path
         | OpDiscard -> discard c
-        | OpShowConfig -> show_config c path
-        | OpSessionChanged -> session_changed c
         end
     | Error e -> Error e |> Lwt.return
     in
