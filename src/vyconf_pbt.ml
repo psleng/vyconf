@@ -183,6 +183,10 @@ type request_config_unsaved = {
   file : string option;
 }
 
+type request_reference_path_exists = {
+  path : string list;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -222,6 +226,7 @@ type request =
   | Get_edit_level of request_get_edit_level
   | Edit_level_root of request_edit_level_root
   | Config_unsaved of request_config_unsaved
+  | Reference_path_exists of request_reference_path_exists
 
 type request_envelope = {
   token : string option;
@@ -523,6 +528,12 @@ let rec default_request_config_unsaved
   ?file:((file:string option) = None)
   () : request_config_unsaved  = {
   file;
+}
+
+let rec default_request_reference_path_exists 
+  ?path:((path:string list) = [])
+  () : request_reference_path_exists  = {
+  path;
 }
 
 let rec default_request (): request = Prompt
@@ -887,6 +898,14 @@ let default_request_config_unsaved_mutable () : request_config_unsaved_mutable =
   file = None;
 }
 
+type request_reference_path_exists_mutable = {
+  mutable path : string list;
+}
+
+let default_request_reference_path_exists_mutable () : request_reference_path_exists_mutable = {
+  path = [];
+}
+
 type request_envelope_mutable = {
   mutable token : string option;
   mutable request : request;
@@ -1182,6 +1201,12 @@ let rec pp_request_config_unsaved fmt (v:request_config_unsaved) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
+let rec pp_request_reference_path_exists fmt (v:request_reference_path_exists) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "path" (Pbrt.Pp.pp_list Pbrt.Pp.pp_string) fmt v.path;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
 let rec pp_request fmt (v:request) =
   match v with
   | Prompt  -> Format.fprintf fmt "Prompt"
@@ -1222,6 +1247,7 @@ let rec pp_request fmt (v:request) =
   | Get_edit_level x -> Format.fprintf fmt "@[<hv2>Get_edit_level(@,%a)@]" pp_request_get_edit_level x
   | Edit_level_root x -> Format.fprintf fmt "@[<hv2>Edit_level_root(@,%a)@]" pp_request_edit_level_root x
   | Config_unsaved x -> Format.fprintf fmt "@[<hv2>Config_unsaved(@,%a)@]" pp_request_config_unsaved x
+  | Reference_path_exists x -> Format.fprintf fmt "@[<hv2>Reference_path_exists(@,%a)@]" pp_request_reference_path_exists x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
   let pp_i fmt () =
@@ -1658,6 +1684,13 @@ let rec encode_pb_request_config_unsaved (v:request_config_unsaved) encoder =
   end;
   ()
 
+let rec encode_pb_request_reference_path_exists (v:request_reference_path_exists) encoder = 
+  Pbrt.List_util.rev_iter_with (fun x encoder -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  ) v.path encoder;
+  ()
+
 let rec encode_pb_request (v:request) encoder = 
   begin match v with
   | Prompt ->
@@ -1774,6 +1807,9 @@ let rec encode_pb_request (v:request) encoder =
   | Config_unsaved x ->
     Pbrt.Encoder.nested encode_pb_request_config_unsaved x encoder;
     Pbrt.Encoder.key 38 Pbrt.Bytes encoder; 
+  | Reference_path_exists x ->
+    Pbrt.Encoder.nested encode_pb_request_reference_path_exists x encoder;
+    Pbrt.Encoder.key 39 Pbrt.Bytes encoder; 
   end
 
 let rec encode_pb_request_envelope (v:request_envelope) encoder = 
@@ -2714,6 +2750,25 @@ let rec decode_pb_request_config_unsaved d =
     file = v.file;
   } : request_config_unsaved)
 
+let rec decode_pb_request_reference_path_exists d =
+  let v = default_request_reference_path_exists_mutable () in
+  let continue__= ref true in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+      v.path <- List.rev v.path;
+    ); continue__ := false
+    | Some (1, Pbrt.Bytes) -> begin
+      v.path <- (Pbrt.Decoder.string d) :: v.path;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_reference_path_exists), field(1)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  ({
+    path = v.path;
+  } : request_reference_path_exists)
+
 let rec decode_pb_request d = 
   let rec loop () = 
     let ret:request = match Pbrt.Decoder.key d with
@@ -2765,6 +2820,7 @@ let rec decode_pb_request d =
       | Some (36, _) -> (Get_edit_level (decode_pb_request_get_edit_level (Pbrt.Decoder.nested d)) : request) 
       | Some (37, _) -> (Edit_level_root (decode_pb_request_edit_level_root (Pbrt.Decoder.nested d)) : request) 
       | Some (38, _) -> (Config_unsaved (decode_pb_request_config_unsaved (Pbrt.Decoder.nested d)) : request) 
+      | Some (39, _) -> (Reference_path_exists (decode_pb_request_reference_path_exists (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 
         loop () 

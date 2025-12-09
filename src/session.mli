@@ -94,3 +94,5 @@ val get_config : world -> session_data -> string -> string
 val cleanup_config : world -> string -> unit
 
 val show_config : world -> session_data -> string list -> string
+
+val reference_path_exists : world -> session_data -> string list -> bool

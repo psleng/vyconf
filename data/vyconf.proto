@@ -189,6 +189,9 @@ message Request {
     optional string file = 1;
   }
 
+  message ReferencePathExists {
+    repeated string path = 1;
+  }
 
   oneof msg {
     Prompt prompt = 1;
@@ -229,6 +232,7 @@ message Request {
     GetEditLevel get_edit_level = 36;
     EditLevelRoot edit_level_root = 37;
     ConfigUnsaved config_unsaved = 38;
+    ReferencePathExists reference_path_exists = 39;
   }
 }
 

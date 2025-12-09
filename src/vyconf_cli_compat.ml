@@ -10,6 +10,7 @@ type op_t =
     | OpShowConfig
     | OpSessionChanged
     | OpConfigUnsaved
+    | OpReferencePathExists
 
 let op_of_arg s =
     match s with
@@ -21,6 +22,7 @@ let op_of_arg s =
     | "showCfg" -> OpShowConfig
     | "sessionChanged" -> OpSessionChanged
     | "sessionUnsaved" -> OpConfigUnsaved
+    | "validateTmplPath" -> OpReferencePathExists
     | _ -> failwith (Printf.sprintf "Unknown operation %s" s)
 
 let in_cli_config_session () =
@@ -91,6 +93,7 @@ let main op path =
         | OpShowConfig -> show_config c path
         | OpSessionChanged -> session_changed c
         | OpConfigUnsaved -> config_unsaved c None
+        | OpReferencePathExists -> reference_path_exists c path
         end
     | Error e -> Error e |> Lwt.return
     in
@@ -128,7 +131,7 @@ let () =
         with Failure msg -> let () = print_endline msg in exit 1
     in
     match op, path_list with
-    | OpSetEditLevel, [] ->
+    | OpSetEditLevel, [] | OpReferencePathExists, [] ->
         let () = print_endline "Must specify config path" in exit 1
     | _, _ ->
         let result = Lwt_main.run (main op path_list) in exit result

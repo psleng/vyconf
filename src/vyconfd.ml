@@ -417,6 +417,12 @@ let config_unsaved world token (req: request_config_unsaved) =
     then response_tmpl
     else {response_tmpl with status=Fail}
 
+let reference_path_exists world token (req: request_reference_path_exists) =
+    let path = req.path in
+    if Session.reference_path_exists world (find_session token) path
+    then response_tmpl
+    else {response_tmpl with status=Fail}
+
 let send_response oc resp =
     let enc = Pbrt.Encoder.create () in
     let%lwt () = encode_pb_response resp enc |> return in
@@ -474,6 +480,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Get_edit_level r -> get_edit_level world t r
                     | Some t, Edit_level_root r -> edit_level_root world t r
                     | Some t, Config_unsaved r -> config_unsaved world t r
+                    | Some t, Reference_path_exists r -> reference_path_exists world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end
