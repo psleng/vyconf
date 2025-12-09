@@ -423,6 +423,16 @@ let reference_path_exists world token (req: request_reference_path_exists) =
     then response_tmpl
     else {response_tmpl with status=Fail}
 
+let get_path_type world token (req: request_get_path_type) =
+    let s = find_session token in
+    try
+        let node_type =
+            Session.get_path_type ~legacy_format:req.legacy_format world s req.path
+        in
+        {response_tmpl with output=(Some node_type)}
+    with Session.Session_error msg ->
+        {response_tmpl with status=Fail; error=(Some msg)}
+
 let send_response oc resp =
     let enc = Pbrt.Encoder.create () in
     let%lwt () = encode_pb_response resp enc |> return in
@@ -481,6 +491,7 @@ let rec handle_connection world ic oc () =
                     | Some t, Edit_level_root r -> edit_level_root world t r
                     | Some t, Config_unsaved r -> config_unsaved world t r
                     | Some t, Reference_path_exists r -> reference_path_exists world t r
+                    | Some t, Get_path_type r -> get_path_type world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end

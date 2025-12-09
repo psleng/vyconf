@@ -194,6 +194,11 @@ type request_reference_path_exists = {
   path : string list;
 }
 
+type request_get_path_type = {
+  path : string list;
+  legacy_format : bool;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -234,6 +239,7 @@ type request =
   | Edit_level_root of request_edit_level_root
   | Config_unsaved of request_config_unsaved
   | Reference_path_exists of request_reference_path_exists
+  | Get_path_type of request_get_path_type
 
 type request_envelope = {
   token : string option;
@@ -522,6 +528,13 @@ val default_request_reference_path_exists :
   request_reference_path_exists
 (** [default_request_reference_path_exists ()] is the default value for type [request_reference_path_exists] *)
 
+val default_request_get_path_type : 
+  ?path:string list ->
+  ?legacy_format:bool ->
+  unit ->
+  request_get_path_type
+(** [default_request_get_path_type ()] is the default value for type [request_get_path_type] *)
+
 val default_request : unit -> request
 (** [default_request ()] is the default value for type [request] *)
 
@@ -670,6 +683,9 @@ val pp_request_config_unsaved : Format.formatter -> request_config_unsaved -> un
 val pp_request_reference_path_exists : Format.formatter -> request_reference_path_exists -> unit 
 (** [pp_request_reference_path_exists v] formats v *)
 
+val pp_request_get_path_type : Format.formatter -> request_get_path_type -> unit 
+(** [pp_request_get_path_type v] formats v *)
+
 val pp_request : Format.formatter -> request -> unit 
 (** [pp_request v] formats v *)
 
@@ -808,6 +824,9 @@ val encode_pb_request_config_unsaved : request_config_unsaved -> Pbrt.Encoder.t 
 val encode_pb_request_reference_path_exists : request_reference_path_exists -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request_reference_path_exists v encoder] encodes [v] with the given [encoder] *)
 
+val encode_pb_request_get_path_type : request_get_path_type -> Pbrt.Encoder.t -> unit
+(** [encode_pb_request_get_path_type v encoder] encodes [v] with the given [encoder] *)
+
 val encode_pb_request : request -> Pbrt.Encoder.t -> unit
 (** [encode_pb_request v encoder] encodes [v] with the given [encoder] *)
 
@@ -945,6 +964,9 @@ val decode_pb_request_config_unsaved : Pbrt.Decoder.t -> request_config_unsaved
 
 val decode_pb_request_reference_path_exists : Pbrt.Decoder.t -> request_reference_path_exists
 (** [decode_pb_request_reference_path_exists decoder] decodes a [request_reference_path_exists] binary value from [decoder] *)
+
+val decode_pb_request_get_path_type : Pbrt.Decoder.t -> request_get_path_type
+(** [decode_pb_request_get_path_type decoder] decodes a [request_get_path_type] binary value from [decoder] *)
 
 val decode_pb_request : Pbrt.Decoder.t -> request
 (** [decode_pb_request decoder] decodes a [request] binary value from [decoder] *)

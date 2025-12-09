@@ -394,6 +394,9 @@ let config_unsaved w s file id =
 let reference_path_exists w _s path =
     RT.reference_path_exists w.reference_tree path
 
+let get_path_type ?(legacy_format=false) w _s path =
+    RT.get_path_type_str ~legacy_format w.reference_tree path
+
 let write_running_cache w =
     (* alert exn Internal.write_internal:
         [Internal.Write_error] caught
