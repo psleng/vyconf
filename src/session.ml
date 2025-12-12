@@ -379,6 +379,18 @@ let save w s file =
     | Error e -> raise (Session_error (Printf.sprintf "Error saving config: %s" e))
     | Ok () -> s
 
+let remove_file file =
+    if Sys.file_exists file then Sys.remove file
+
+let config_unsaved w s file id =
+    let tmp_save = Printf.sprintf "/tmp/config.running_%s" id in
+    let res =
+        try
+            let _ = save w s tmp_save in
+            not (Vyos1x.Util.file_compare ~ignore_line_prefix:"//" tmp_save file)
+        with Session_error _ -> true (* false positive on unlikely error *)
+    in remove_file tmp_save; res
+
 let write_running_cache w =
     (* alert exn Internal.write_internal:
         [Internal.Write_error] caught
@@ -480,10 +492,6 @@ let get_config w s id =
     in id
 
 let cleanup_config w id =
-    let remove_file file =
-        if Sys.file_exists file then
-            Sys.remove file
-    in
     let vc = w.vyconf_config in
     let running_cache = Printf.sprintf "%s_%s" vc.running_cache id in
     let session_cache = Printf.sprintf "%s_%s" vc.session_cache id in
