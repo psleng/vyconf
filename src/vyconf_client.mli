@@ -47,3 +47,5 @@ val reset_edit_level : t -> (string, string) result Lwt.t
 val get_edit_level : t -> (string, string) result Lwt.t
 
 val edit_level_root : t -> (string, string) result Lwt.t
+
+val config_unsaved : t -> string option -> (string, string) result Lwt.t

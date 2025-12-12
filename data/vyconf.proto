@@ -185,6 +185,10 @@ message Request {
     optional int32 dummy = 1;
   }
 
+  message ConfigUnsaved {
+    optional string file = 1;
+  }
+
 
   oneof msg {
     Prompt prompt = 1;
@@ -224,6 +228,7 @@ message Request {
     ResetEditLevel reset_edit_level = 35;
     GetEditLevel get_edit_level = 36;
     EditLevelRoot edit_level_root = 37;
+    ConfigUnsaved config_unsaved = 38;
   }
 }
 

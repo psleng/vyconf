@@ -9,6 +9,7 @@ type op_t =
     | OpEditLevelRoot
     | OpShowConfig
     | OpSessionChanged
+    | OpConfigUnsaved
 
 let op_of_arg s =
     match s with
@@ -19,6 +20,7 @@ let op_of_arg s =
     | "editLevelAtRoot" -> OpEditLevelRoot
     | "showCfg" -> OpShowConfig
     | "sessionChanged" -> OpSessionChanged
+    | "sessionUnsaved" -> OpConfigUnsaved
     | _ -> failwith (Printf.sprintf "Unknown operation %s" s)
 
 let in_cli_config_session () =
@@ -88,6 +90,7 @@ let main op path =
         | OpEditLevelRoot -> edit_level_root c
         | OpShowConfig -> show_config c path
         | OpSessionChanged -> session_changed c
+        | OpConfigUnsaved -> config_unsaved c None
         end
     | Error e -> Error e |> Lwt.return
     in
