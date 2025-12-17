@@ -192,6 +192,11 @@ type request_get_path_type = {
   legacy_format : bool;
 }
 
+type request_get_completion_env = {
+  path : string list;
+  legacy_format : bool;
+}
+
 type request =
   | Prompt
   | Setup_session of request_setup_session
@@ -233,6 +238,7 @@ type request =
   | Config_unsaved of request_config_unsaved
   | Reference_path_exists of request_reference_path_exists
   | Get_path_type of request_get_path_type
+  | Get_completion_env of request_get_completion_env
 
 type request_envelope = {
   token : string option;
@@ -546,6 +552,14 @@ let rec default_request_get_path_type
   ?path:((path:string list) = [])
   ?legacy_format:((legacy_format:bool) = false)
   () : request_get_path_type  = {
+  path;
+  legacy_format;
+}
+
+let rec default_request_get_completion_env 
+  ?path:((path:string list) = [])
+  ?legacy_format:((legacy_format:bool) = false)
+  () : request_get_completion_env  = {
   path;
   legacy_format;
 }
@@ -930,6 +944,16 @@ let default_request_get_path_type_mutable () : request_get_path_type_mutable = {
   legacy_format = false;
 }
 
+type request_get_completion_env_mutable = {
+  mutable path : string list;
+  mutable legacy_format : bool;
+}
+
+let default_request_get_completion_env_mutable () : request_get_completion_env_mutable = {
+  path = [];
+  legacy_format = false;
+}
+
 type request_envelope_mutable = {
   mutable token : string option;
   mutable request : request;
@@ -1238,6 +1262,13 @@ let rec pp_request_get_path_type fmt (v:request_get_path_type) =
   in
   Pbrt.Pp.pp_brk pp_i fmt ()
 
+let rec pp_request_get_completion_env fmt (v:request_get_completion_env) = 
+  let pp_i fmt () =
+    Pbrt.Pp.pp_record_field ~first:true "path" (Pbrt.Pp.pp_list Pbrt.Pp.pp_string) fmt v.path;
+    Pbrt.Pp.pp_record_field ~first:false "legacy_format" Pbrt.Pp.pp_bool fmt v.legacy_format;
+  in
+  Pbrt.Pp.pp_brk pp_i fmt ()
+
 let rec pp_request fmt (v:request) =
   match v with
   | Prompt  -> Format.fprintf fmt "Prompt"
@@ -1280,6 +1311,7 @@ let rec pp_request fmt (v:request) =
   | Config_unsaved x -> Format.fprintf fmt "@[<hv2>Config_unsaved(@,%a)@]" pp_request_config_unsaved x
   | Reference_path_exists x -> Format.fprintf fmt "@[<hv2>Reference_path_exists(@,%a)@]" pp_request_reference_path_exists x
   | Get_path_type x -> Format.fprintf fmt "@[<hv2>Get_path_type(@,%a)@]" pp_request_get_path_type x
+  | Get_completion_env x -> Format.fprintf fmt "@[<hv2>Get_completion_env(@,%a)@]" pp_request_get_completion_env x
 
 let rec pp_request_envelope fmt (v:request_envelope) = 
   let pp_i fmt () =
@@ -1732,6 +1764,15 @@ let rec encode_pb_request_get_path_type (v:request_get_path_type) encoder =
   Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
   ()
 
+let rec encode_pb_request_get_completion_env (v:request_get_completion_env) encoder = 
+  Pbrt.List_util.rev_iter_with (fun x encoder -> 
+    Pbrt.Encoder.string x encoder;
+    Pbrt.Encoder.key 1 Pbrt.Bytes encoder; 
+  ) v.path encoder;
+  Pbrt.Encoder.bool v.legacy_format encoder;
+  Pbrt.Encoder.key 2 Pbrt.Varint encoder; 
+  ()
+
 let rec encode_pb_request (v:request) encoder = 
   begin match v with
   | Prompt ->
@@ -1854,6 +1895,9 @@ let rec encode_pb_request (v:request) encoder =
   | Get_path_type x ->
     Pbrt.Encoder.nested encode_pb_request_get_path_type x encoder;
     Pbrt.Encoder.key 40 Pbrt.Bytes encoder; 
+  | Get_completion_env x ->
+    Pbrt.Encoder.nested encode_pb_request_get_completion_env x encoder;
+    Pbrt.Encoder.key 41 Pbrt.Bytes encoder; 
   end
 
 let rec encode_pb_request_envelope (v:request_envelope) encoder = 
@@ -2840,6 +2884,33 @@ let rec decode_pb_request_get_path_type d =
     legacy_format = v.legacy_format;
   } : request_get_path_type)
 
+let rec decode_pb_request_get_completion_env d =
+  let v = default_request_get_completion_env_mutable () in
+  let continue__= ref true in
+  let legacy_format_is_set = ref false in
+  while !continue__ do
+    match Pbrt.Decoder.key d with
+    | None -> (
+      v.path <- List.rev v.path;
+    ); continue__ := false
+    | Some (1, Pbrt.Bytes) -> begin
+      v.path <- (Pbrt.Decoder.string d) :: v.path;
+    end
+    | Some (1, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_get_completion_env), field(1)" pk
+    | Some (2, Pbrt.Varint) -> begin
+      v.legacy_format <- Pbrt.Decoder.bool d; legacy_format_is_set := true;
+    end
+    | Some (2, pk) -> 
+      Pbrt.Decoder.unexpected_payload "Message(request_get_completion_env), field(2)" pk
+    | Some (_, payload_kind) -> Pbrt.Decoder.skip d payload_kind
+  done;
+  begin if not !legacy_format_is_set then Pbrt.Decoder.missing_field "legacy_format" end;
+  ({
+    path = v.path;
+    legacy_format = v.legacy_format;
+  } : request_get_completion_env)
+
 let rec decode_pb_request d = 
   let rec loop () = 
     let ret:request = match Pbrt.Decoder.key d with
@@ -2893,6 +2964,7 @@ let rec decode_pb_request d =
       | Some (38, _) -> (Config_unsaved (decode_pb_request_config_unsaved (Pbrt.Decoder.nested d)) : request) 
       | Some (39, _) -> (Reference_path_exists (decode_pb_request_reference_path_exists (Pbrt.Decoder.nested d)) : request) 
       | Some (40, _) -> (Get_path_type (decode_pb_request_get_path_type (Pbrt.Decoder.nested d)) : request) 
+      | Some (41, _) -> (Get_completion_env (decode_pb_request_get_completion_env (Pbrt.Decoder.nested d)) : request) 
       | Some (n, payload_kind) -> (
         Pbrt.Decoder.skip d payload_kind; 
         loop () 

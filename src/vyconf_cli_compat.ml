@@ -12,6 +12,7 @@ type op_t =
     | OpConfigUnsaved
     | OpReferencePathExists
     | OpGetPathType
+    | OpGetCompletionEnv
 
 let op_of_arg s =
     match s with
@@ -25,6 +26,7 @@ let op_of_arg s =
     | "sessionUnsaved" -> OpConfigUnsaved
     | "validateTmplPath" -> OpReferencePathExists
     | "getNodeType" -> OpGetPathType
+    | "getCompletionEnv" -> OpGetCompletionEnv
     | _ -> failwith (Printf.sprintf "Unknown operation %s" s)
 
 let in_cli_config_session () =
@@ -97,6 +99,7 @@ let main op path =
         | OpConfigUnsaved -> config_unsaved c None
         | OpReferencePathExists -> reference_path_exists c path
         | OpGetPathType -> get_path_type c path
+        | OpGetCompletionEnv -> get_completion_env c path
         end
     | Error e -> Error e |> Lwt.return
     in
@@ -134,7 +137,11 @@ let () =
         with Failure msg -> let () = print_endline msg in exit 1
     in
     match op, path_list with
-    | OpSetEditLevel, [] | OpReferencePathExists, [] | OpGetPathType, [] ->
+    | OpSetEditLevel, []
+    | OpReferencePathExists, []
+    | OpGetPathType, [] ->
         let () = print_endline "Must specify config path" in exit 1
+    | OpGetCompletionEnv, [] | OpGetCompletionEnv, [_] ->
+        let () = print_endline "Must specify command and at least one component" in exit 1
     | _, _ ->
         let result = Lwt_main.run (main op path_list) in exit result
