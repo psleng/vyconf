@@ -49,3 +49,9 @@ val get_edit_level : t -> (string, string) result Lwt.t
 val edit_level_root : t -> (string, string) result Lwt.t
 
 val config_unsaved : t -> string option -> (string, string) result Lwt.t
+
+val reference_path_exists : t -> string list -> (string, string) result Lwt.t
+
+val get_path_type : t -> string list -> (string, string) result Lwt.t
+
+val get_completion_env : t -> string list -> (string, string) result Lwt.t

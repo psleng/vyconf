@@ -391,6 +391,26 @@ let config_unsaved w s file id =
         with Session_error _ -> true (* false positive on unlikely error *)
     in remove_file tmp_save; res
 
+let reference_path_exists w _s path =
+    RT.reference_path_exists w.reference_tree path
+
+let get_path_type ?(legacy_format=false) w _s path =
+    RT.get_path_type_str ~legacy_format w.reference_tree path
+
+let get_completion_env ?(legacy_format=false) w s path =
+    let op, path =
+        match path with
+        | [] -> raise (Session_error "Missing op and path")
+        | h :: tl -> (h, tl)
+    in
+    let config = get_proposed_config w s in
+    let res =
+        Vyos1x.Completion.get_completion_env_str ~legacy_format w.reference_tree config op path
+    in
+    match res with
+    | Ok env -> env
+    | Error e -> raise (Session_error e)
+
 let write_running_cache w =
     (* alert exn Internal.write_internal:
         [Internal.Write_error] caught

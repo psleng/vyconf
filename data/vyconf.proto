@@ -189,6 +189,19 @@ message Request {
     optional string file = 1;
   }
 
+  message ReferencePathExists {
+    repeated string path = 1;
+  }
+
+  message GetPathType {
+    repeated string path = 1;
+    required bool legacy_format = 2;
+  }
+
+  message GetCompletionEnv {
+    repeated string path = 1;
+    required bool legacy_format = 2;
+  }
 
   oneof msg {
     Prompt prompt = 1;
@@ -229,6 +242,9 @@ message Request {
     GetEditLevel get_edit_level = 36;
     EditLevelRoot edit_level_root = 37;
     ConfigUnsaved config_unsaved = 38;
+    ReferencePathExists reference_path_exists = 39;
+    GetPathType get_path_type = 40;
+    GetCompletionEnv get_completion_env = 41;
   }
 }
 

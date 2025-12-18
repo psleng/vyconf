@@ -229,3 +229,28 @@ let config_unsaved client file =
     | Success -> Lwt.return (Ok "")
     | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
     | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let reference_path_exists client path =
+    let req = Reference_path_exists {path=path;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> Lwt.return (Ok "")
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let get_path_type client path =
+    let req = Get_path_type {path=path; legacy_format=true;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> unwrap resp.output |> Lwt.return
+    | Fail -> Error (Option.value resp.error ~default:"") |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
+
+let get_completion_env client path =
+    let req = Get_completion_env {path=path; legacy_format=true;} in
+    let%lwt resp = do_request client req in
+    match resp.status with
+    | Success -> unwrap resp.output |> Lwt.return
+    (* legacy getCompletionEnv is silent on error *)
+    | Fail -> Error "" |> Lwt.return
+    | _ -> Error (Option.value resp.error ~default:"") |> Lwt.return
