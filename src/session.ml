@@ -590,15 +590,20 @@ let exists w s path =
 
 let show_config w s path =
     let path_total = s.edit_level @ path in
+    let path_show =
+        match RT.get_path_type w.reference_tree path_total with
+        | `Leaf_value -> Vyos1x.Util.drop_last path_total
+        | _ -> path_total
+    in
     let proposed_config = get_proposed_config w s in
-    if not (Vyos1x.Util.is_empty path_total) &&
-       not ((VT.exists[@alert "-exn"]) proposed_config path_total)
+    if not (Vyos1x.Util.is_empty path_show) &&
+       not ((VT.exists[@alert "-exn"]) proposed_config path_show)
     then raise (Session_error "Path does not exist")
     else
     let res =
         (CD.diff_show[@alert "-exn"])
         w.reference_tree
-        path_total
+        path_show
         w.running_config
         proposed_config
     in res
