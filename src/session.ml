@@ -142,7 +142,7 @@ let get_proposed_config w s =
     let c = w.running_config in
     apply_changes w (List.rev s.changeset) c
 
-let update_set w changeset path =
+let update_set w _s changeset path =
     (* alert exn RT.refpath; RT.is_multi:
         [Vytree.Empty_path] checked or n/a in callers set, aux_set, get_changeset
         [Vytree.Nonexistent_path] checked or n/a in callers set, aux_set, get_changeset
@@ -156,20 +156,21 @@ let update_set w changeset path =
     let op = CfgSet (path, value, value_behaviour) in
     (op :: changeset)
 
-let update_delete w changeset path =
+let update_delete w s changeset path =
     (* alert exn VT.exists; CT.value_exists:
         [Vytree.Empty_path] checked or n/a in callers delete, aux_delete, get_changeset
        alert exn CT.value_exists:
         [Vytree.Nonexistent_path] checked by VT.exists
      *)
     let path, value = split_path w path in
-    if not ((VT.exists[@alert "-exn"]) w.running_config path)
+    let proposed_config = get_proposed_config w s in
+    if not ((VT.exists[@alert "-exn"]) proposed_config path)
     then raise (Session_error "Non-existent path")
     else
     let check_value =
         match value with
         | None -> true
-        | Some v -> (CT.value_exists[@alert "-exn"]) w.running_config path v
+        | Some v -> (CT.value_exists[@alert "-exn"]) proposed_config path v
     in
     if not check_value
     then raise (Session_error "Non-existent value")
@@ -177,7 +178,7 @@ let update_delete w changeset path =
     let op = CfgDelete (path, value) in
     (op :: changeset)
 
-let get_changeset w lt rt =
+let get_changeset w s lt rt =
     (* alert exn CD.diff_tree:
         [Config_diff.Incommensurable] not possible for base root
         [Config_diff.Empty_comparison] not possible for empty path
@@ -186,10 +187,10 @@ let get_changeset w lt rt =
     let add_tree = CT.get_subtree diff ["add"] in
     let del_tree = CT.get_subtree diff ["del"] in
     let add_changeset =
-        List.fold_left (update_set w) [] (CT.value_paths_of_tree add_tree)
+        List.fold_left (update_set w s) [] (CT.value_paths_of_tree add_tree)
     in
     let del_changeset =
-        List.fold_left (update_delete w) [] (CT.value_paths_of_tree del_tree)
+        List.fold_left (update_delete w s) [] (CT.value_paths_of_tree del_tree)
     in
     add_changeset @ del_changeset
 
@@ -199,7 +200,7 @@ let set w s path =
     else
     let path_total = s.edit_level @ path in
     let _ = validate w s path_total in
-    let changeset' = update_set w s.changeset path_total in
+    let changeset' = update_set w s s.changeset path_total in
     { s with changeset = changeset' }
 
 let delete w s path =
@@ -207,7 +208,7 @@ let delete w s path =
     then raise (Session_error "Path is empty")
     else
     let path_total = s.edit_level @ path in
-    let changeset' = update_delete w s.changeset path_total in
+    let changeset' = update_delete w s s.changeset path_total in
     { s with changeset = changeset' }
 
 let aux_set w s path name tagval =
@@ -224,9 +225,9 @@ let aux_set w s path name tagval =
     let changeset' =
     match op' with
     | None ->
-        update_set w [] path
+        update_set w s [] path
     | Some o ->
-        update_set w o.changeset path
+        update_set w s o.changeset path
     in
     let op =
     { script_name = name; tag_value = tagval; changeset = changeset' }
@@ -250,9 +251,9 @@ let aux_delete w s path name tagval =
     let changeset' =
     match op' with
     | None ->
-        update_delete w [] path
+        update_delete w s [] path
     | Some o ->
-        update_delete w o.changeset path
+        update_delete w s o.changeset path
     in
     let op =
     { script_name = name; tag_value = tagval; changeset = changeset' }
@@ -354,7 +355,7 @@ let load w s file cached =
     | Error e -> raise (Session_error (Printf.sprintf "Error loading config: %s" e))
     | Ok config ->
         validate_tree w config;
-        { s with changeset = get_changeset w w.running_config config; }
+        { s with changeset = get_changeset w s w.running_config config; }
 
 let merge w s file destructive =
     (* alert exn CD.tree_merge:
@@ -370,7 +371,7 @@ let merge w s file destructive =
         let merged =
             (CD.tree_merge[@alert "-exn"]) ~destructive:destructive proposed config
         in
-        { s with changeset = get_changeset w w.running_config merged; }
+        { s with changeset = get_changeset w s w.running_config merged; }
 
 let save w s file =
     let ct = w.running_config in
