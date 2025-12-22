@@ -325,6 +325,7 @@ let commit world token (req: request_commit) =
                     { s with changeset =
                         Session.get_changeset
                         world
+                        s
                         world.Session.running_config
                         post_proposed;
                         aux_changeset = []; }

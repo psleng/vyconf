@@ -37,7 +37,7 @@ val set_modified : session_data -> session_data
 
 val validate : world -> session_data -> string list -> unit
 
-val get_changeset : world -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> cfg_op list
+val get_changeset : world -> session_data -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> cfg_op list
 
 val set : world -> session_data -> string list -> session_data
 
