@@ -325,6 +325,7 @@ let commit world token (req: request_commit) =
                     { s with changeset =
                         Session.get_changeset
                         world
+                        s
                         world.Session.running_config
                         post_proposed;
                         aux_changeset = []; }
@@ -417,6 +418,33 @@ let config_unsaved world token (req: request_config_unsaved) =
     then response_tmpl
     else {response_tmpl with status=Fail}
 
+let reference_path_exists world token (req: request_reference_path_exists) =
+    let path = req.path in
+    if Session.reference_path_exists world (find_session token) path
+    then response_tmpl
+    else {response_tmpl with status=Fail}
+
+let get_path_type world token (req: request_get_path_type) =
+    let s = find_session token in
+    try
+        let node_type =
+            Session.get_path_type ~legacy_format:req.legacy_format world s req.path
+        in
+        {response_tmpl with output=(Some node_type)}
+    with Session.Session_error msg ->
+        {response_tmpl with status=Fail; error=(Some msg)}
+
+let get_completion_env world token (req: request_get_completion_env) =
+    let s = find_session token in
+    try
+        let node_type =
+            Session.get_completion_env
+            ~legacy_format:req.legacy_format world s req.path
+        in
+        {response_tmpl with output=(Some node_type)}
+    with Session.Session_error msg ->
+        {response_tmpl with status=Fail; error=(Some msg)}
+
 let send_response oc resp =
     let enc = Pbrt.Encoder.create () in
     let%lwt () = encode_pb_response resp enc |> return in
@@ -474,6 +502,9 @@ let rec handle_connection world ic oc () =
                     | Some t, Get_edit_level r -> get_edit_level world t r
                     | Some t, Edit_level_root r -> edit_level_root world t r
                     | Some t, Config_unsaved r -> config_unsaved world t r
+                    | Some t, Reference_path_exists r -> reference_path_exists world t r
+                    | Some t, Get_path_type r -> get_path_type world t r
+                    | Some t, Get_completion_env r -> get_completion_env world t r
                     | _ -> failwith "Unimplemented"
                     ) |> Lwt.return
                end
