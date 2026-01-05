@@ -37,7 +37,7 @@ val set_modified : session_data -> session_data
 
 val validate : world -> session_data -> string list -> unit
 
-val get_changeset : world -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> cfg_op list
+val get_changeset : world -> session_data -> Vyos1x.Config_tree.t -> Vyos1x.Config_tree.t -> cfg_op list
 
 val set : world -> session_data -> string list -> session_data
 
@@ -94,3 +94,9 @@ val get_config : world -> session_data -> string -> string
 val cleanup_config : world -> string -> unit
 
 val show_config : world -> session_data -> string list -> string
+
+val reference_path_exists : world -> session_data -> string list -> bool
+
+val get_path_type : ?legacy_format:bool -> world -> session_data -> string list -> string
+
+val get_completion_env : ?legacy_format:bool -> world -> session_data -> string list -> string
